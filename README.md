@@ -102,6 +102,20 @@ auto-generated `Backup/` folder is ignored, since counting old backups as
 "using" a sample would mean almost nothing ever looks orphaned.
 
 ```sh
+# Scriptable version of Ableton's own "Collect All and Save" (File menu):
+# copies external audio/M4L-device references into Samples/Imported and
+# Presets/Imported, and rewrites those references to point at the copy.
+# Never overwrites the input - always writes a new numbered .als alongside it
+# (Song.als -> Song-01.als). Pack content, Ableton's own bundled content, and
+# anything already inside the project are left alone.
+abletonctl collect ~/Music/artist-name/PRODUCTION-2026/Song/Song.als
+
+# Same, for every top-level .als in a directory. Each file is independent -
+# one failing doesn't stop the rest.
+abletonctl collect --all ~/Music/artist-name/PRODUCTION-2026/Song
+```
+
+```sh
 # List the track catalog for every registered artist (or just one).
 # Rows with no matching project folder on disk are flagged - expected for
 # Idea-stage tracks that don't have one yet.

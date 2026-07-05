@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/rorycaraher/abletonctl/internal/backup"
+	"github.com/rorycaraher/abletonctl/internal/collect"
 	"github.com/rorycaraher/abletonctl/internal/config"
 	"github.com/rorycaraher/abletonctl/internal/demos"
 	"github.com/rorycaraher/abletonctl/internal/discovery"
@@ -32,6 +33,8 @@ func main() {
 		err = runProjects(os.Args[2:])
 	case "prune-samples":
 		err = runPruneSamples(os.Args[2:])
+	case "collect":
+		err = runCollect(os.Args[2:])
 	case "convert-demos":
 		err = runConvertDemos(os.Args[2:])
 	case "tracks":
@@ -61,6 +64,8 @@ Usage:
   abletonctl backup --artist user-library [--dry-run]
   abletonctl projects [--artist NAME]
   abletonctl prune-samples <project-path> [--quarantine]
+  abletonctl collect <path-to-.als>
+  abletonctl collect --all <directory>
   abletonctl convert-demos [--artist NAME] [--role ROLE] [--dry-run]
   abletonctl tracks [--artist NAME]
   abletonctl track add <name> [--artist NAME] Key=Value...
@@ -227,6 +232,101 @@ func runPruneSamples(args []string) error {
 		fmt.Printf("quarantined %d files into %s/_unreferenced/\n", len(moved), project.Path)
 	}
 	return nil
+}
+
+func runCollect(args []string) error {
+	// Parsed by hand rather than via flag.FlagSet, for the same reason as
+	// prune-samples: --all takes its own positional (the directory to scan)
+	// alongside the single-file form's positional.
+	var all bool
+	var positional []string
+	for _, a := range args {
+		switch a {
+		case "--all":
+			all = true
+		case "-h", "--help":
+			fmt.Println("usage: abletonctl collect <path-to-.als>")
+			fmt.Println("       abletonctl collect --all <directory>")
+			return nil
+		default:
+			positional = append(positional, a)
+		}
+	}
+	if len(positional) != 1 {
+		return fmt.Errorf("usage: abletonctl collect <path-to-.als>\n       abletonctl collect --all <directory>")
+	}
+
+	if all {
+		return runCollectAll(positional[0])
+	}
+	return runCollectOne(positional[0])
+}
+
+func runCollectOne(alsPath string) error {
+	result, err := collect.CollectOne(alsPath)
+	if err != nil {
+		return err
+	}
+	printCollectResult(alsPath, result)
+	if result.Status == collect.Failed {
+		return fmt.Errorf("collect failed for %s", alsPath)
+	}
+	return nil
+}
+
+// runCollectAll processes every top-level .als in dir, one file's failure
+// never stopping the rest. The file list is a fixed snapshot taken before
+// any processing starts.
+func runCollectAll(dir string) error {
+	matches, err := filepath.Glob(filepath.Join(dir, "*.als"))
+	if err != nil {
+		return err
+	}
+	if len(matches) == 0 {
+		fmt.Printf("no .als files found in %s\n", dir)
+		return nil
+	}
+
+	var failed int
+	for _, alsPath := range matches {
+		fmt.Printf("== %s ==\n", filepath.Base(alsPath))
+		result, err := collect.CollectOne(alsPath)
+		if err != nil {
+			failed++
+			fmt.Printf("  error: %v\n", err)
+			fmt.Println()
+			continue
+		}
+		printCollectResult(alsPath, result)
+		if result.Status == collect.Failed {
+			failed++
+		}
+		fmt.Println()
+	}
+
+	if failed > 0 {
+		return fmt.Errorf("%d of %d file(s) failed; see problems above", failed, len(matches))
+	}
+	return nil
+}
+
+func printCollectResult(alsPath string, result collect.Result) {
+	switch result.Status {
+	case collect.Failed:
+		fmt.Println("Aborted -- nothing was copied or written. Problems found:")
+		for _, p := range result.Problems {
+			fmt.Printf("  - %s\n", p)
+		}
+	case collect.Nothing:
+		fmt.Println("Nothing to collect -- no external SampleRef/MxPatchRef content found.")
+	case collect.Collected:
+		for _, line := range result.Report {
+			fmt.Println(line)
+		}
+		fmt.Printf("Collected %d reference(s), %d unique file(s), into %s\n",
+			result.Count, result.Unique, strings.Join(result.DestDirs, ", "))
+		fmt.Printf("Wrote %s\n", result.Output)
+	}
 }
 
 func runConvertDemos(args []string) error {

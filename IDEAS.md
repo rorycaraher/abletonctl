@@ -72,5 +72,3 @@ backup, and sample-orphan finding.
   register it in one step - `abletonctl new <name> --template X` - so
   every project starts from a known-good baseline instead of drifting
   from whatever the last project happened to look like.
-- **Recreate Collect All and Save** functionality into a scriptable
-  solution.
