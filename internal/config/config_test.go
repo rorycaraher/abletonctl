@@ -21,7 +21,7 @@ func TestLoadRegistry(t *testing.T) {
 	path := filepath.Join(dir, "config.toml")
 	writeFile(t, path, `
 [artists]
-artist-name = "/Users/rca/Music/artist-name"
+artist-name = "/path/to/artist/directory"
 other-artist = "/Volumes/External/other-artist"
 `)
 
@@ -29,7 +29,7 @@ other-artist = "/Volumes/External/other-artist"
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := reg.Artists["artist-name"]; got != "/Users/rca/Music/artist-name" {
+	if got := reg.Artists["artist-name"]; got != "/path/to/artist/directory" {
 		t.Fatalf("got %q", got)
 	}
 	names := reg.ArtistNames()
@@ -43,10 +43,10 @@ func TestLoadRegistry_Library(t *testing.T) {
 	path := filepath.Join(dir, "config.toml")
 	writeFile(t, path, `
 [artists]
-artist-name = "/Users/rca/Music/artist-name"
+artist-name = "/path/to/artist/directory"
 
 [library]
-path = "/Users/rca/Music/Ableton/User Library"
+path = "/path/to/Ableton/User Library"
 remote = "r2:my-bucket/user-library"
 `)
 
@@ -57,7 +57,7 @@ remote = "r2:my-bucket/user-library"
 	if reg.Library == nil {
 		t.Fatal("expected Library to be set")
 	}
-	if got, err := reg.Library.ResolvedPath(); err != nil || got != "/Users/rca/Music/Ableton/User Library" {
+	if got, err := reg.Library.ResolvedPath(); err != nil || got != "/path/to/Ableton/User Library" {
 		t.Fatalf("got %q, %v", got, err)
 	}
 	if reg.Library.Remote != "r2:my-bucket/user-library" {
@@ -70,7 +70,7 @@ func TestLoadRegistry_NoLibrary(t *testing.T) {
 	path := filepath.Join(dir, "config.toml")
 	writeFile(t, path, `
 [artists]
-artist-name = "/Users/rca/Music/artist-name"
+artist-name = "/path/to/artist/directory"
 `)
 
 	reg, err := LoadRegistry(path)

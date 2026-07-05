@@ -18,7 +18,7 @@ const fixtureAls = `<?xml version="1.0" encoding="UTF-8"?>
               <FileRef>
                 <RelativePathType Value="1" />
                 <RelativePath Value="Samples\Imported\kick.wav" />
-                <Path Value="/Users/rca/Music/artist-name/PRODUCTION-2026/Song/Samples/Imported/kick.wav" />
+                <Path Value="/path/to/artist/directory/PRODUCTION-2026/Song/Samples/Imported/kick.wav" />
               </FileRef>
             </SampleRef>
           </Sample>
@@ -27,7 +27,7 @@ const fixtureAls = `<?xml version="1.0" encoding="UTF-8"?>
               <FileRef>
                 <RelativePathType Value="1" />
                 <RelativePath Value="Samples/Imported/snare.wav" />
-                <Path Value="/Users/rca/Music/artist-name/PRODUCTION-2026/Song/Samples/Imported/snare.wav" />
+                <Path Value="/path/to/artist/directory/PRODUCTION-2026/Song/Samples/Imported/snare.wav" />
               </FileRef>
             </SampleRef>
           </Sample>

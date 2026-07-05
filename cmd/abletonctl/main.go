@@ -1,6 +1,8 @@
 // Command abletonctl manages a multi-artist Ableton Live production
 // workspace: discovering projects, backing up production/demo directories
-// to configurable rclone remotes, and finding unreferenced samples.
+// to configurable rclone remotes, finding unreferenced samples, collecting
+// external file references into a project, converting rendered demos to
+// mp3, and tracking per-track status in a CSV catalog.
 package main
 
 import (
@@ -71,7 +73,7 @@ Usage:
   abletonctl track add <name> [--artist NAME] Key=Value...
   abletonctl track set <name> [--artist NAME] Key=Value...
 
-Global:
+Global (all except prune-samples/collect, which take explicit paths):
   --registry PATH   registry file (default ~/.config/abletonctl/config.toml)
 `)
 }

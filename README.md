@@ -2,8 +2,10 @@
 
 `abletonctl` is a small CLI for managing a multi-artist Ableton Live
 production workspace: discovering projects, backing up production/demo
-directories to configurable rclone remotes, and finding samples that aren't
-referenced by any project anymore.
+directories to configurable rclone remotes, finding samples that aren't
+referenced by any project anymore, collecting external file references into
+a project (a scriptable "Collect All and Save"), converting rendered demos
+to mp3, and tracking per-track status in a lightweight CSV catalog.
 
 ## Conventions
 

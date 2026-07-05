@@ -5,7 +5,7 @@
 # to share a common parent - they can live on different drives.
 
 [artists]
-artist-name = "/Users/rca/Music/artist-name"
+artist-name = "/path/to/artist/directory"
 # other-artist = "/Volumes/External/other-artist"
 
 # Optional: back up the local Ableton User Library - presets, samples, M4L
@@ -14,4 +14,4 @@ artist-name = "/Users/rca/Music/artist-name"
 # ~/Music/Ableton/User Library (Ableton's own default) if omitted.
 [library]
 remote = "r2:my-bucket/user-library"
-# path = "/Users/rca/Music/Ableton/User Library"
+# path = "/path/to/Ableton/User Library"
