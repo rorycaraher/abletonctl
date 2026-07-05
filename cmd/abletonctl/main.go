@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/rorycaraher/ableton-framework/internal/backup"
 	"github.com/rorycaraher/ableton-framework/internal/config"
 	"github.com/rorycaraher/ableton-framework/internal/demos"
 	"github.com/rorycaraher/ableton-framework/internal/discovery"
 	"github.com/rorycaraher/ableton-framework/internal/samples"
+	"github.com/rorycaraher/ableton-framework/internal/tracks"
 )
 
 func main() {
@@ -32,6 +34,10 @@ func main() {
 		err = runPruneSamples(os.Args[2:])
 	case "convert-demos":
 		err = runConvertDemos(os.Args[2:])
+	case "tracks":
+		err = runTracks(os.Args[2:])
+	case "track":
+		err = runTrack(os.Args[2:])
 	case "-h", "--help", "help":
 		usage()
 		return
@@ -55,6 +61,9 @@ Usage:
   abletonctl projects [--artist NAME]
   abletonctl prune-samples <project-path> [--quarantine]
   abletonctl convert-demos [--artist NAME] [--role ROLE] [--dry-run]
+  abletonctl tracks [--artist NAME]
+  abletonctl track add <name> [--artist NAME] Key=Value...
+  abletonctl track set <name> [--artist NAME] Key=Value...
 
 Global:
   --registry PATH   registry file (default ~/.config/abletonctl/config.toml)
@@ -289,4 +298,191 @@ func runConvertDemos(args []string) error {
 		return fmt.Errorf("%d file(s) failed to convert; originals left in place", totalFailed)
 	}
 	return nil
+}
+
+func runTracks(args []string) error {
+	fs := flag.NewFlagSet("tracks", flag.ExitOnError)
+	artist := fs.String("artist", "", "limit to one registered artist")
+	registryPath := fs.String("registry", "", "path to registry config")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	reg, err := loadRegistry(*registryPath)
+	if err != nil {
+		return err
+	}
+
+	artists := reg.ArtistNames()
+	if *artist != "" {
+		if _, ok := reg.Artists[*artist]; !ok {
+			return fmt.Errorf("artist %q is not registered", *artist)
+		}
+		artists = []string{*artist}
+	}
+
+	for _, name := range artists {
+		root := reg.Artists[name]
+		path := tracks.CatalogPath(root)
+
+		cat, err := tracks.Load(path)
+		if os.IsNotExist(err) {
+			fmt.Printf("%s: no track catalog at %s\n", name, path)
+			continue
+		}
+		if err != nil {
+			return err
+		}
+
+		known, err := knownProjectNames(root)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s (%s)\n", name, path)
+		for _, row := range cat.Rows {
+			track := row[tracks.TrackColumn]
+			line := fmt.Sprintf("  %-40s %-15s", track, row["Status"])
+			if !known[track] {
+				line += "  [no project folder]"
+			}
+			fmt.Println(line)
+		}
+	}
+	return nil
+}
+
+// knownProjectNames returns the set of discovered project folder names
+// across every PRODUCTION-* directory under an artist root, used to flag
+// catalog rows with no corresponding folder on disk (expected for
+// Idea-stage tracks, informational otherwise).
+func knownProjectNames(artistRoot string) (map[string]bool, error) {
+	known := map[string]bool{}
+	prodDirs, err := discovery.DiscoverProductionDirs(artistRoot)
+	if err != nil {
+		return nil, err
+	}
+	for _, dir := range prodDirs {
+		projects, err := discovery.DiscoverProjects(dir)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range projects {
+			known[p.Name] = true
+		}
+	}
+	return known, nil
+}
+
+func runTrack(args []string) error {
+	if len(args) == 0 {
+		return fmt.Errorf("usage: abletonctl track <add|set> <name> [--artist NAME] Key=Value...")
+	}
+	switch args[0] {
+	case "add":
+		return runTrackMutate(args[1:], true)
+	case "set":
+		return runTrackMutate(args[1:], false)
+	case "-h", "--help":
+		fmt.Println("usage: abletonctl track <add|set> <name> [--artist NAME] Key=Value...")
+		return nil
+	default:
+		return fmt.Errorf("unknown track subcommand %q (want add or set)", args[0])
+	}
+}
+
+func runTrackMutate(args []string, isAdd bool) error {
+	// Parsed by hand rather than via flag.FlagSet, for the same reason as
+	// prune-samples: the natural invocation mixes a positional name with
+	// trailing Key=Value pairs, which FlagSet can't express.
+	var artist, registryPath, name string
+	fields := map[string]string{}
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--artist":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--artist requires a value")
+			}
+			artist = args[i]
+		case a == "--registry":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--registry requires a value")
+			}
+			registryPath = args[i]
+		case strings.Contains(a, "="):
+			parts := strings.SplitN(a, "=", 2)
+			fields[parts[0]] = parts[1]
+		case name == "":
+			name = a
+		default:
+			return fmt.Errorf("unexpected argument %q", a)
+		}
+	}
+	if name == "" {
+		return fmt.Errorf("usage: abletonctl track <add|set> <name> [--artist NAME] Key=Value...")
+	}
+
+	reg, err := loadRegistry(registryPath)
+	if err != nil {
+		return err
+	}
+	root, err := resolveArtistRoot(reg, artist)
+	if err != nil {
+		return err
+	}
+
+	path := tracks.CatalogPath(root)
+	cat, err := tracks.Load(path)
+	if os.IsNotExist(err) {
+		if !isAdd {
+			return fmt.Errorf("no track catalog at %s (use 'track add' to create it)", path)
+		}
+		cat = tracks.New()
+	} else if err != nil {
+		return err
+	}
+
+	if isAdd {
+		err = cat.Add(name, fields)
+	} else {
+		err = cat.Set(name, fields)
+	}
+	if err != nil {
+		return err
+	}
+
+	if err := tracks.Save(path, cat); err != nil {
+		return err
+	}
+	verb := "updated"
+	if isAdd {
+		verb = "added"
+	}
+	fmt.Printf("%s: %s\n", verb, name)
+	return nil
+}
+
+// resolveArtistRoot resolves the artist to mutate a track catalog for:
+// the explicit --artist if given, or the sole registered artist if there's
+// only one. Ambiguous with more than one artist and no --artist given.
+func resolveArtistRoot(reg *config.Registry, artist string) (string, error) {
+	if artist != "" {
+		root, ok := reg.Artists[artist]
+		if !ok {
+			return "", fmt.Errorf("artist %q is not registered", artist)
+		}
+		return root, nil
+	}
+	names := reg.ArtistNames()
+	switch len(names) {
+	case 0:
+		return "", fmt.Errorf("no artists registered")
+	case 1:
+		return reg.Artists[names[0]], nil
+	default:
+		return "", fmt.Errorf("multiple artists registered; specify --artist")
+	}
 }

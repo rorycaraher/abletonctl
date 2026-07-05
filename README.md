@@ -19,6 +19,12 @@ referenced by any project anymore.
 - **Demos**: a `demos/` directory under the artist root holding rendered
   demo tracks. Only mp3 belongs here long-term - aiff/wav masters for
   finishing live elsewhere. `convert-demos` (below) enforces that.
+- **Track catalog**: a `.abletonctl-tracks.csv` file at the artist root
+  tracking status/priority/notes/etc. per track - a local replacement for
+  a spreadsheet. The header row *is* the schema: `Track` is the only
+  required column (row identity), every other column is a freeform string
+  and new ones can be added at any time, by hand or via `track add`/`set`,
+  with no code change.
 
 ## Install
 
@@ -81,6 +87,30 @@ abletonctl prune-samples ~/Music/artist-name/PRODUCTION-2026/Song --quarantine
 `prune-samples` only looks at top-level `.als` files - Ableton's
 auto-generated `Backup/` folder is ignored, since counting old backups as
 "using" a sample would mean almost nothing ever looks orphaned.
+
+```sh
+# List the track catalog for every registered artist (or just one).
+# Rows with no matching project folder on disk are flagged - expected for
+# Idea-stage tracks that don't have one yet.
+abletonctl tracks
+abletonctl tracks --artist artist-name
+
+# Add a new track. Any Key=Value pair becomes a column; unrecognized
+# columns are created on the fly. Errors if the track already exists.
+abletonctl track add "New Idea" Status=Idea
+
+# Update an existing track. Errors if it doesn't exist yet (use add
+# instead). --artist is only required when more than one artist is
+# registered.
+abletonctl track set "Zap Dub" --artist artist-name Status=Mixdown Priority=A
+```
+
+The catalog is a plain CSV at `<artist-root>/.abletonctl-tracks.csv`, so it
+can also be hand-edited or opened directly in Numbers/Excel/Sheets for bulk
+changes - `track add`/`set` are just a typo-safe shortcut for the common
+single-track update, not the only way to edit it. Blank rows (e.g. used as
+visual dividers between batches in a spreadsheet) are skipped on read and
+not preserved on write.
 
 ## Development
 
