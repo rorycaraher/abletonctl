@@ -14,6 +14,41 @@ import (
 // Registry maps artist names to their root directory on disk.
 type Registry struct {
 	Artists map[string]string `toml:"artists"`
+	// Library optionally configures backup of the local Ableton User
+	// Library. Unlike artists, there's exactly one per machine, so it's a
+	// single optional section rather than a map.
+	Library *Library `toml:"library"`
+}
+
+// Library configures backup of the Ableton User Library: presets, samples,
+// M4L devices, and templates shared across every project, not tied to any
+// one artist namespace.
+type Library struct {
+	// Path is the User Library directory. Defaults to
+	// ~/Music/Ableton/User Library (Ableton's own default location) when empty.
+	Path string `toml:"path"`
+	// Remote is the rclone remote the library is copied to, following the
+	// same "parent directory" convention as a Role's remote: the library
+	// folder itself lands in a like-named subfolder there.
+	Remote string `toml:"remote"`
+}
+
+// DefaultUserLibraryPath returns Ableton's default User Library location,
+// ~/Music/Ableton/User Library.
+func DefaultUserLibraryPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, "Music", "Ableton", "User Library"), nil
+}
+
+// ResolvedPath returns l.Path, falling back to DefaultUserLibraryPath if unset.
+func (l *Library) ResolvedPath() (string, error) {
+	if l.Path != "" {
+		return l.Path, nil
+	}
+	return DefaultUserLibraryPath()
 }
 
 // DefaultRegistryPath returns ~/.config/abletonctl/config.toml.

@@ -58,6 +58,7 @@ func usage() {
 
 Usage:
   abletonctl backup [--artist NAME] [--role ROLE] [--dry-run]
+  abletonctl backup --artist user-library [--dry-run]
   abletonctl projects [--artist NAME]
   abletonctl prune-samples <project-path> [--quarantine]
   abletonctl convert-demos [--artist NAME] [--role ROLE] [--dry-run]
