@@ -1,4 +1,4 @@
-module github.com/rorycaraher/ableton-framework
+module github.com/rorycaraher/abletonctl
 
 go 1.25.6
 

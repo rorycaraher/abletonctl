@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/rorycaraher/ableton-framework/internal/discovery"
+	"github.com/rorycaraher/abletonctl/internal/discovery"
 )
 
 // Status describes how confidently a Samples/ file is used by a project.
