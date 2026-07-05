@@ -10,12 +10,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rorycaraher/ableton-framework/internal/backup"
-	"github.com/rorycaraher/ableton-framework/internal/config"
-	"github.com/rorycaraher/ableton-framework/internal/demos"
-	"github.com/rorycaraher/ableton-framework/internal/discovery"
-	"github.com/rorycaraher/ableton-framework/internal/samples"
-	"github.com/rorycaraher/ableton-framework/internal/tracks"
+	"github.com/rorycaraher/abletonctl/internal/backup"
+	"github.com/rorycaraher/abletonctl/internal/config"
+	"github.com/rorycaraher/abletonctl/internal/demos"
+	"github.com/rorycaraher/abletonctl/internal/discovery"
+	"github.com/rorycaraher/abletonctl/internal/samples"
+	"github.com/rorycaraher/abletonctl/internal/tracks"
 )
 
 func main() {

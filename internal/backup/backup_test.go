@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/rorycaraher/ableton-framework/internal/config"
+	"github.com/rorycaraher/abletonctl/internal/config"
 )
 
 func mustMkdir(t *testing.T, path string) {

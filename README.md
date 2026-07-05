@@ -1,4 +1,4 @@
-# ableton-framework
+# abletonctl
 
 `abletonctl` is a small CLI for managing a multi-artist Ableton Live
 production workspace: discovering projects, backing up production/demo

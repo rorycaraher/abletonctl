@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/rorycaraher/ableton-framework/internal/config"
-	"github.com/rorycaraher/ableton-framework/internal/discovery"
+	"github.com/rorycaraher/abletonctl/internal/config"
+	"github.com/rorycaraher/abletonctl/internal/discovery"
 )
 
 // Job is one local-directory-to-remote rclone copy.

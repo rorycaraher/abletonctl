@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rorycaraher/ableton-framework/internal/discovery"
+	"github.com/rorycaraher/abletonctl/internal/discovery"
 )
 
 func writeSample(t *testing.T, path string, size int) {
