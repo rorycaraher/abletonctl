@@ -1,0 +1,9 @@
+# Example top-level registry.
+# Real path: ~/.config/abletonctl/config.toml
+#
+# Maps each artist namespace to its root directory on disk. Roots don't need
+# to share a common parent - they can live on different drives.
+
+[artists]
+artist-name = "/Users/rca/Music/artist-name"
+# other-artist = "/Volumes/External/other-artist"

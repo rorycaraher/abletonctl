@@ -1,0 +1,18 @@
+# Example per-artist role config.
+# Real path: <artist-root>/.abletonctl.toml (e.g. artist-name/.abletonctl.toml)
+#
+# Each role's `glob` matches directories directly under the artist root.
+# Every matched directory becomes its own rclone copy job, landing in a
+# like-named subfolder under `remote` - so `remote` should be the *parent*
+# path, not include the matched directory's own name.
+
+[roles.production]
+glob = "PRODUCTION-*"
+remote = "r2:my-bucket/artist-name"
+# PRODUCTION-2025/ -> r2:my-bucket/artist-name/PRODUCTION-2025
+# PRODUCTION-2026/ -> r2:my-bucket/artist-name/PRODUCTION-2026
+
+[roles.demos]
+glob = "demos"
+remote = "gdrive:artist-name"
+# demos/ -> gdrive:artist-name/demos
