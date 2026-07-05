@@ -25,6 +25,12 @@ referenced by any project anymore.
   required column (row identity), every other column is a freeform string
   and new ones can be added at any time, by hand or via `track add`/`set`,
   with no code change.
+- **User Library**: Ableton's own shared library of presets, samples, M4L
+  devices, and templates (`~/Music/Ableton/User Library` by default) - reused
+  across every project rather than belonging to one artist namespace. It's
+  optionally registered once, machine-level, via `[library]` in the registry
+  (see `examples/config.toml`), and backed up with the same `backup` command
+  as artist roles.
 
 ## Install
 
@@ -47,6 +53,10 @@ Requires `ffmpeg` on your `PATH` for `convert-demos`.
    *parent* of the folder being copied - each matched local directory lands
    in a like-named subfolder at the remote, so multiple `PRODUCTION-*` years
    don't collide.
+
+3. Optionally, a `[library]` section in the registry to back up the User
+   Library - see `examples/config.toml`. Same "remote is the parent"
+   convention as a role.
 
 Backups always use `rclone copy` (never `sync`) - they only add/update files
 on the remote, they never delete from it. A local mistake can't take out
@@ -73,6 +83,9 @@ abletonctl backup
 
 # Narrow to one artist and/or role, and preview without transferring.
 abletonctl backup --artist artist-name --role production --dry-run
+
+# Back up just the User Library (requires [library] in the registry).
+abletonctl backup --artist user-library --dry-run
 
 # Find samples that no top-level .als in a project references anymore.
 abletonctl prune-samples ~/Music/artist-name/PRODUCTION-2026/Song

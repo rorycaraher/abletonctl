@@ -22,12 +22,50 @@ type Job struct {
 	RemoteDir string
 }
 
+// LibraryArtist is the pseudo artist name used to address the single
+// machine-level User Library backup job via the existing --artist flag
+// (e.g. `abletonctl backup --artist user-library`), rather than adding a
+// separate flag for what is otherwise just another backup job.
+const LibraryArtist = "user-library"
+
+// libraryRole is the pseudo role name reported for the User Library job.
+// The library has no configurable roles, so this is purely cosmetic output.
+const libraryRole = "library"
+
 // BuildJobs expands the registry into concrete copy jobs, filtered by
 // artist/role when non-empty. Each role's glob may match multiple local
 // directories (e.g. several PRODUCTION-YYYY years); each becomes its own job,
 // copied to a like-named subfolder of the role's remote.
+//
+// If the registry has a [library] section, its backup job is included
+// whenever neither filter narrows the run to a specific artist/role, or
+// selected on its own via artistFilter == LibraryArtist.
 func BuildJobs(reg *config.Registry, artistFilter, roleFilter string) ([]Job, error) {
+	if artistFilter == LibraryArtist {
+		if roleFilter != "" {
+			return nil, fmt.Errorf("%q has no roles; omit --role", LibraryArtist)
+		}
+		job, err := libraryJob(reg)
+		if err != nil {
+			return nil, err
+		}
+		if job == nil {
+			return nil, fmt.Errorf("no [library] configured in the registry")
+		}
+		return []Job{*job}, nil
+	}
+
 	var jobs []Job
+
+	if artistFilter == "" && roleFilter == "" {
+		job, err := libraryJob(reg)
+		if err != nil {
+			return nil, err
+		}
+		if job != nil {
+			jobs = append(jobs, *job)
+		}
+	}
 
 	artists := reg.ArtistNames()
 	if artistFilter != "" {
@@ -88,6 +126,27 @@ func BuildJobs(reg *config.Registry, artistFilter, roleFilter string) ([]Job, er
 
 func joinRemote(remote, name string) string {
 	return strings.TrimRight(remote, "/") + "/" + name
+}
+
+// libraryJob builds the User Library backup job from reg.Library, or returns
+// nil if no [library] section is configured.
+func libraryJob(reg *config.Registry) (*Job, error) {
+	if reg.Library == nil {
+		return nil, nil
+	}
+	if reg.Library.Remote == "" {
+		return nil, fmt.Errorf("[library] is configured but has no remote")
+	}
+	path, err := reg.Library.ResolvedPath()
+	if err != nil {
+		return nil, fmt.Errorf("resolving user library path: %w", err)
+	}
+	return &Job{
+		Artist:    LibraryArtist,
+		Role:      libraryRole,
+		LocalDir:  path,
+		RemoteDir: joinRemote(reg.Library.Remote, filepath.Base(path)),
+	}, nil
 }
 
 // CopyArgs builds the rclone argv for copying a job. copy (not sync) is used

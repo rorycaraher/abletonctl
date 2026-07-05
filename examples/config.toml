@@ -7,3 +7,11 @@
 [artists]
 artist-name = "/Users/rca/Music/artist-name"
 # other-artist = "/Volumes/External/other-artist"
+
+# Optional: back up the local Ableton User Library - presets, samples, M4L
+# devices, templates. It's machine-level, not artist-specific, so it's a
+# single section rather than a map. `path` defaults to
+# ~/Music/Ableton/User Library (Ableton's own default) if omitted.
+[library]
+remote = "r2:my-bucket/user-library"
+# path = "/Users/rca/Music/Ableton/User Library"
