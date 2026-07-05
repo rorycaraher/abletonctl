@@ -52,3 +52,23 @@ backup, and sample-orphan finding.
   of a project's `.als` XML so a missing/mismatched plugin on another
   machine (silently substituted or greyed out, changing the sound) can be
   caught before handoff instead of discovered by ear.
+- **Health-check aggregator (`doctor`).** A single command that runs every
+  standalone check above - disk-space preflight, cloud-sync hazard, orphan
+  samples, plugin drift, backup staleness - and reports pass/fail per
+  check, so there's one place to run before/after a session instead of
+  remembering which command covers which risk.
+- **Pipeline gates on the track catalog.** The freeform `Status` column
+  already behaves like a state machine (Idea -> WIP -> Mixdown ->
+  Mastered); `track set` could refuse a promotion - e.g. to `Mastered` -
+  if `prune-samples` reports orphans or the artist's last backup is
+  stale, turning the column into an actual gate instead of just a label.
+- **Backup freshness as an SLO.** An extension of "Automated scheduling"
+  above: instead of only recording last-successful-backup time, define a
+  target staleness threshold per role (e.g. no artist should go >48h
+  without a successful backup) and report breaches explicitly, rather
+  than requiring a manual glance at a timestamp to notice one.
+- **Golden template pipeline.** Scaffold a new project from a registered
+  Ableton template (e.g. the User Library's `Templates/` folder) and
+  register it in one step - `abletonctl new <name> --template X` - so
+  every project starts from a known-good baseline instead of drifting
+  from whatever the last project happened to look like.
