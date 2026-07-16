@@ -6,16 +6,19 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/rorycaraher/abletonctl/internal/backup"
 	"github.com/rorycaraher/abletonctl/internal/collect"
 	"github.com/rorycaraher/abletonctl/internal/config"
 	"github.com/rorycaraher/abletonctl/internal/demos"
+	"github.com/rorycaraher/abletonctl/internal/describe"
 	"github.com/rorycaraher/abletonctl/internal/discovery"
 	"github.com/rorycaraher/abletonctl/internal/samples"
 	"github.com/rorycaraher/abletonctl/internal/tracks"
@@ -35,6 +38,8 @@ func main() {
 		err = runProjects(os.Args[2:])
 	case "prune-samples":
 		err = runPruneSamples(os.Args[2:])
+	case "describe":
+		err = runDescribe(os.Args[2:])
 	case "collect":
 		err = runCollect(os.Args[2:])
 	case "convert-demos":
@@ -66,6 +71,7 @@ Usage:
   abletonctl backup --artist user-library [--dry-run]
   abletonctl projects [--artist NAME]
   abletonctl prune-samples <project-path> [--quarantine]
+  abletonctl describe <project-path>
   abletonctl collect <path-to-.als>
   abletonctl collect --all <directory>
   abletonctl convert-demos [--artist NAME] [--role ROLE] [--dry-run]
@@ -234,6 +240,132 @@ func runPruneSamples(args []string) error {
 		fmt.Printf("quarantined %d files into %s/_unreferenced/\n", len(moved), project.Path)
 	}
 	return nil
+}
+
+func runDescribe(args []string) error {
+	// Parsed by hand rather than via flag.FlagSet, for the same reason as
+	// prune-samples: the natural invocation is `describe <path>`.
+	var registryPath string
+	var positional []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch {
+		case a == "--registry":
+			i++
+			if i >= len(args) {
+				return fmt.Errorf("--registry requires a value")
+			}
+			registryPath = args[i]
+		case a == "-h" || a == "--help":
+			fmt.Println("usage: abletonctl describe <project-path> [--registry PATH]")
+			return nil
+		default:
+			positional = append(positional, a)
+		}
+	}
+	if len(positional) != 1 {
+		return fmt.Errorf("usage: abletonctl describe <project-path> [--registry PATH]")
+	}
+	projectPath, err := filepath.Abs(positional[0])
+	if err != nil {
+		return err
+	}
+
+	siblings, err := discovery.DiscoverProjects(filepath.Dir(projectPath))
+	if err != nil {
+		return err
+	}
+	var project *discovery.Project
+	for i := range siblings {
+		if siblings[i].Path == projectPath {
+			project = &siblings[i]
+			break
+		}
+	}
+	if project == nil {
+		return fmt.Errorf("%s does not look like an Ableton project (no top-level .als file)", projectPath)
+	}
+
+	// A registry is optional here: describe still reports on samples for an
+	// unregistered project, it just skips the Track Catalog/Demos sections.
+	// A missing registry file is fine; a malformed one is a real error.
+	reg, regErr := loadRegistry(registryPath)
+	if regErr != nil {
+		if !errors.Is(regErr, os.ErrNotExist) {
+			return regErr
+		}
+		reg = nil
+	}
+
+	report, err := describe.Build(*project, reg)
+	if err != nil {
+		return err
+	}
+	printDescribeReport(report)
+	return nil
+}
+
+func printDescribeReport(r *describe.Report) {
+	fmt.Printf("%s\n", r.Project.Name)
+	fmt.Printf("  %s\n", r.Project.Path)
+	if r.Artist != "" {
+		fmt.Printf("  artist: %s\n", r.Artist)
+	}
+
+	fmt.Println("\n.als files:")
+	for _, a := range r.Project.AlsFiles {
+		fmt.Printf("  %s\n", filepath.Base(a))
+	}
+
+	fmt.Printf("\nsamples: %d used, %d uncertain, %d orphan (%d bytes reclaimable)\n",
+		r.UsedCount, r.UncertainCount, r.OrphanCount, r.OrphanBytes)
+
+	fmt.Println()
+	switch {
+	case r.Artist == "":
+		fmt.Println("track catalog: skipped (project isn't under a registered artist root)")
+	case !r.HasCatalog:
+		fmt.Println("track catalog: none at " + r.CatalogPath)
+	case r.TrackFound:
+		fmt.Printf("track catalog: %s\n", formatTrackRow(r.Track))
+	default:
+		fmt.Println("track catalog: no matching row")
+	}
+
+	fmt.Println()
+	switch {
+	case r.Artist == "":
+		fmt.Println("demos: skipped (project isn't under a registered artist root)")
+	case !r.DemosRoleConfigured:
+		fmt.Println("demos: no [roles.demos] configured for this artist")
+	case len(r.DemoMatches) == 0:
+		fmt.Println("demos: no matching files found")
+	default:
+		fmt.Println("demos:")
+		for _, d := range r.DemoMatches {
+			fmt.Printf("  %s\n", d)
+		}
+	}
+
+	fmt.Println("\nbackup: not tracked at project granularity (see CONTEXT.md)")
+}
+
+// formatTrackRow renders a track catalog row's non-identity columns as
+// Key=Value pairs, sorted by column name for deterministic output.
+func formatTrackRow(row tracks.Row) string {
+	keys := make([]string, 0, len(row))
+	for k := range row {
+		if k == tracks.TrackColumn {
+			continue
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	pairs := make([]string, 0, len(keys))
+	for _, k := range keys {
+		pairs = append(pairs, fmt.Sprintf("%s=%s", k, row[k]))
+	}
+	return strings.Join(pairs, " ")
 }
 
 func runCollect(args []string) error {

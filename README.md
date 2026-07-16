@@ -104,6 +104,20 @@ auto-generated `Backup/` folder is ignored, since counting old backups as
 "using" a sample would mean almost nothing ever looks orphaned.
 
 ```sh
+# Aggregate everything abletonctl knows about one project: sample status,
+# its Track Catalog row, and matching demo files - into a single report.
+abletonctl describe ~/Music/artist-name/PRODUCTION-2026/Song
+```
+
+Demos are matched to a project by filename prefix (`Song.mp3`, `Song -
+alt.mp3` match project `Song`; `Songbird.mp3` doesn't) - safe only because
+project folders are never renamed in place, see `CONTEXT.md`. If the
+project isn't under a registered artist root, the Track Catalog/demos
+sections are skipped rather than erroring. Backup freshness is
+deliberately left out: backups run at the whole-Production-directory
+level, so there's no per-project backup state to report.
+
+```sh
 # Scriptable version of Ableton's own "Collect All and Save" (File menu):
 # copies external audio/M4L-device references into Samples/Imported and
 # Presets/Imported, and rewrites those references to point at the copy.

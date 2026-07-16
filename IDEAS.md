@@ -72,3 +72,9 @@ backup, and sample-orphan finding.
   register it in one step - `abletonctl new <name> --template X` - so
   every project starts from a known-good baseline instead of drifting
   from whatever the last project happened to look like.
+- **Superseded-project marking.** Retitle (see `docs/adr/0001`) leaves the
+  pre-Retitle Project folder in place, untouched, with nothing marking it
+  as no longer current. `prune-samples`, `backup`, and `tracks` keep
+  treating it as fully live indefinitely, and a stale Track Catalog row
+  can still point at it. Needs a decision on whether/how to flag or
+  archive it.
