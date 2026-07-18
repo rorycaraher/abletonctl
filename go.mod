@@ -2,4 +2,4 @@ module github.com/rorycaraher/abletonctl
 
 go 1.25.6
 
-require github.com/BurntSushi/toml v1.6.0 // indirect
+require github.com/BurntSushi/toml v1.6.0
