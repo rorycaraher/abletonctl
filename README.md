@@ -23,9 +23,25 @@ demos to mp3, and backing up all projects and demos to configurable rclone remot
 
 ## Install
 
+Download the archive for your OS/arch from the
+[latest release](https://github.com/rorycaraher/abletonctl/releases/latest),
+extract it, and put the `abletonctl` binary on your `PATH`:
+
+```sh
+# macOS (Apple Silicon), for example:
+curl -LO https://github.com/rorycaraher/abletonctl/releases/latest/download/abletonctl_Darwin_arm64.tar.gz
+tar -xzf abletonctl_Darwin_arm64.tar.gz abletonctl
+mv abletonctl /usr/local/bin/   # or anywhere on your PATH
+```
+
+Other builds on the releases page: `Darwin_x86_64`, `Linux_x86_64`,
+`Linux_arm64`, `Linux_i386`, and `Windows_x86_64`/`arm64`/`i386` (`.zip`).
+
+Or build from source:
+
 ```sh
 go build -o abletonctl ./cmd/abletonctl
-mv abletonctl /usr/local/bin/   # or anywhere on your PATH
+mv abletonctl /usr/local/bin/
 ```
 
 Requires the `rclone` binary on your `PATH` for the `backup` command, with
