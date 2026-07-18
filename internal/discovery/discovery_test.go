@@ -21,24 +21,6 @@ func mustTouch(t *testing.T, path string) {
 	}
 }
 
-func TestDiscoverProductionDirs(t *testing.T) {
-	root := t.TempDir()
-	mustMkdir(t, filepath.Join(root, "PRODUCTION-2025"))
-	mustMkdir(t, filepath.Join(root, "PRODUCTION-2026"))
-	mustMkdir(t, filepath.Join(root, "demos"))
-
-	dirs, err := DiscoverProductionDirs(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(dirs) != 2 {
-		t.Fatalf("got %d dirs, want 2: %v", len(dirs), dirs)
-	}
-	if filepath.Base(dirs[0]) != "PRODUCTION-2025" || filepath.Base(dirs[1]) != "PRODUCTION-2026" {
-		t.Fatalf("unexpected dirs: %v", dirs)
-	}
-}
-
 func TestDiscoverProjects_DetectsViaTopLevelAls(t *testing.T) {
 	prod := t.TempDir()
 

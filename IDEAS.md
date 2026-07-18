@@ -43,7 +43,7 @@ backup, and sample-orphan finding.
 - **Disk-space preflight.** Warn if free space on the volume a project
   records to is low - Ableton can silently fail to record or hang when
   the disk fills mid-session, with no clear warning beforehand.
-- **Reverse orphan check.** `prune-samples` finds samples no project
+- **Reverse orphan check.** `find-orphans` finds samples no project
   references anymore; the inverse - samples a project's `.als` depends on
   that live outside its `Samples/` folder (Desktop, Downloads, an
   external drive) - is the other half of the problem, since those break
@@ -60,7 +60,7 @@ backup, and sample-orphan finding.
 - **Pipeline gates on the track catalog.** The freeform `Status` column
   already behaves like a state machine (Idea -> WIP -> Mixdown ->
   Mastered); `track set` could refuse a promotion - e.g. to `Mastered` -
-  if `prune-samples` reports orphans or the artist's last backup is
+  if `find-orphans` reports orphans or the artist's last backup is
   stale, turning the column into an actual gate instead of just a label.
 - **Backup freshness as an SLO.** An extension of "Automated scheduling"
   above: instead of only recording last-successful-backup time, define a

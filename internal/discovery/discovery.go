@@ -1,6 +1,6 @@
-// Package discovery finds role directories (e.g. PRODUCTION-*) and Ableton
-// project folders on disk using structural conventions rather than naming
-// exclude-lists.
+// Package discovery finds Ableton project folders on disk using a
+// structural convention (a top-level .als file) rather than a naming
+// exclude-list.
 package discovery
 
 import (
@@ -10,41 +10,6 @@ import (
 	"sort"
 	"strings"
 )
-
-// ProductionDirGlob is the naming convention for a year's production
-// directory. All directories matching it are treated as equally active —
-// there is no year-based tiering.
-const ProductionDirGlob = "PRODUCTION-*"
-
-// DiscoverProductionDirs returns every PRODUCTION-* directory directly under
-// an artist root, sorted.
-func DiscoverProductionDirs(artistRoot string) ([]string, error) {
-	return MatchRoleDirs(artistRoot, ProductionDirGlob)
-}
-
-// MatchRoleDirs returns absolute paths of direct child directories of root
-// whose basename matches glob (a filepath.Match-style pattern), sorted.
-func MatchRoleDirs(root, glob string) ([]string, error) {
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", root, err)
-	}
-	var matches []string
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		ok, err := filepath.Match(glob, e.Name())
-		if err != nil {
-			return nil, fmt.Errorf("bad glob %q: %w", glob, err)
-		}
-		if ok {
-			matches = append(matches, filepath.Join(root, e.Name()))
-		}
-	}
-	sort.Strings(matches)
-	return matches, nil
-}
 
 // Project is an Ableton project folder: a directory with one or more
 // top-level .als files.

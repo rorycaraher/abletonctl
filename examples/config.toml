@@ -1,17 +1,13 @@
-# Example top-level registry.
+# Example config file.
 # Real path: ~/.config/abletonctl/config.toml
 #
-# Maps each artist namespace to its root directory on disk. Roots don't need
-# to share a common parent - they can live on different drives.
+# Points abletonctl at your Ableton Live workspace: a directory full of
+# Ableton Projects, and a directory WIP demo bounces land in. Each has its
+# own rclone remote it backs up to - the remote is the exact destination,
+# not a parent directory.
 
-[artists]
-artist-name = "/path/to/artist/directory"
-# other-artist = "/Volumes/External/other-artist"
+projects_dir = "/path/to/your/projects"
+demos_dir = "/path/to/your/demos"
 
-# Optional: back up the local Ableton User Library - presets, samples, M4L
-# devices, templates. It's machine-level, not artist-specific, so it's a
-# single section rather than a map. `path` defaults to
-# ~/Music/Ableton/User Library (Ableton's own default) if omitted.
-[library]
-remote = "r2:my-bucket/user-library"
-# path = "/path/to/Ableton/User Library"
+projects_remote = "r2:my-bucket/projects"
+demos_remote = "gdrive:my-demos"
