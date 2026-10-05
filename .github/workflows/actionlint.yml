@@ -1,0 +1,23 @@
+name: actionlint
+
+# Only runs when a workflow (or this config) changes; locally the same check
+# runs as a pre-commit hook.
+on:
+  push:
+    branches: [main]
+    paths: ['.github/**']
+  pull_request:
+    paths: ['.github/**']
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          install_args: actionlint
+      - run: actionlint

@@ -1,0 +1,15 @@
+version: "2"
+linters:
+  settings:
+    errcheck:
+      # deferred Close on read-only files is noise; writes check Close explicitly
+      exclude-functions:
+        - (*os.File).Close
+        - (io.Closer).Close
+        - (*compress/gzip.Reader).Close
+    staticcheck:
+      checks: ["all", "-QF1002", "-ST1005"]
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [errcheck]

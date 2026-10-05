@@ -80,3 +80,16 @@ func TestCopyArgs_UsesCopyNotSyncAndNeverDeletes(t *testing.T) {
 		t.Fatalf("expected --dry-run to be passed through: %v", dryRunArgs)
 	}
 }
+
+func TestListArgs(t *testing.T) {
+	got := ListArgs("gdrive:NLTL/demos-backup")
+	want := []string{"lsf", "--recursive", "--files-only", "--contimeout", "20s", "--timeout", "60s", "gdrive:NLTL/demos-backup"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+	for _, a := range got {
+		if a == "copy" || a == "sync" || a == "delete" || a == "purge" {
+			t.Fatalf("listing must be read-only, got %q", a)
+		}
+	}
+}
