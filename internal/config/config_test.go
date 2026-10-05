@@ -16,111 +16,68 @@ func writeFile(t *testing.T, path, content string) {
 	}
 }
 
-func TestLoadRegistry(t *testing.T) {
+func TestLoad(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
 	writeFile(t, path, `
-[artists]
-artist-name = "/path/to/artist/directory"
-other-artist = "/Volumes/External/other-artist"
+projects_dir = "/path/to/projects"
+demos_dir = "/path/to/demos"
+projects_remote = "r2:my-bucket/projects"
+demos_remote = "gdrive:my-demos"
 `)
 
-	reg, err := LoadRegistry(path)
+	cfg, err := Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := reg.Artists["artist-name"]; got != "/path/to/artist/directory" {
-		t.Fatalf("got %q", got)
+	if cfg.ProjectsDir != "/path/to/projects" {
+		t.Fatalf("got %q", cfg.ProjectsDir)
 	}
-	names := reg.ArtistNames()
-	if len(names) != 2 || names[0] != "artist-name" || names[1] != "other-artist" {
-		t.Fatalf("got %v", names)
+	if cfg.DemosDir != "/path/to/demos" {
+		t.Fatalf("got %q", cfg.DemosDir)
+	}
+	if cfg.ProjectsRemote != "r2:my-bucket/projects" {
+		t.Fatalf("got %q", cfg.ProjectsRemote)
+	}
+	if cfg.DemosRemote != "gdrive:my-demos" {
+		t.Fatalf("got %q", cfg.DemosRemote)
 	}
 }
 
-func TestLoadRegistry_Library(t *testing.T) {
+func TestLoad_PartialConfig(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
 	writeFile(t, path, `
-[artists]
-artist-name = "/path/to/artist/directory"
-
-[library]
-path = "/path/to/Ableton/User Library"
-remote = "r2:my-bucket/user-library"
+projects_dir = "/path/to/projects"
 `)
 
-	reg, err := LoadRegistry(path)
+	cfg, err := Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reg.Library == nil {
-		t.Fatal("expected Library to be set")
-	}
-	if got, err := reg.Library.ResolvedPath(); err != nil || got != "/path/to/Ableton/User Library" {
-		t.Fatalf("got %q, %v", got, err)
-	}
-	if reg.Library.Remote != "r2:my-bucket/user-library" {
-		t.Fatalf("got %q", reg.Library.Remote)
+	if cfg.DemosDir != "" {
+		t.Fatalf("expected empty DemosDir, got %q", cfg.DemosDir)
 	}
 }
 
-func TestLoadRegistry_NoLibrary(t *testing.T) {
+func TestLoad_MissingFileErrors(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "config.toml")
-	writeFile(t, path, `
-[artists]
-artist-name = "/path/to/artist/directory"
-`)
-
-	reg, err := LoadRegistry(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reg.Library != nil {
-		t.Fatalf("expected no Library, got %+v", reg.Library)
+	if _, err := Load(filepath.Join(dir, "nope.toml")); err == nil {
+		t.Fatal("expected error for missing config file")
 	}
 }
 
-func TestLibrary_ResolvedPath_DefaultsWhenEmpty(t *testing.T) {
-	lib := &Library{Remote: "r2:my-bucket/user-library"}
-	got, err := lib.ResolvedPath()
+func TestDefaultPath(t *testing.T) {
+	home, err := os.UserHomeDir()
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := DefaultUserLibraryPath()
+	got, err := DefaultPath()
 	if err != nil {
 		t.Fatal(err)
 	}
+	want := filepath.Join(home, ".config", "abletonctl", "config.toml")
 	if got != want {
 		t.Fatalf("got %q, want %q", got, want)
-	}
-}
-
-func TestLoadArtistConfig(t *testing.T) {
-	root := t.TempDir()
-	writeFile(t, ArtistConfigPath(root), `
-[roles.production]
-glob = "PRODUCTION-*"
-remote = "r2:my-bucket/artist-name"
-
-[roles.demos]
-glob = "demos"
-remote = "gdrive:artist-name/demos"
-`)
-
-	cfg, err := LoadArtistConfig(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(cfg.Roles) != 2 {
-		t.Fatalf("got %d roles", len(cfg.Roles))
-	}
-	if cfg.Roles["production"].Glob != "PRODUCTION-*" {
-		t.Fatalf("got %+v", cfg.Roles["production"])
-	}
-	names := cfg.RoleNames()
-	if len(names) != 2 || names[0] != "demos" || names[1] != "production" {
-		t.Fatalf("got %v", names)
 	}
 }

@@ -1,152 +1,60 @@
-// Package backup builds and runs rclone copy jobs for registered artist
-// roles (e.g. production, demos).
+// Package backup builds and runs rclone copy jobs for the two fixed backup
+// targets: the projects directory and the demos directory.
 package backup
 
 import (
 	"fmt"
 	"io"
 	"os/exec"
-	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/rorycaraher/abletonctl/internal/config"
-	"github.com/rorycaraher/abletonctl/internal/discovery"
 )
 
-// Job is one local-directory-to-remote rclone copy.
+// Target identifies which of the two directories a Job backs up.
+type Target string
+
+const (
+	Projects Target = "projects"
+	Demos    Target = "demos"
+)
+
+// Job is one local-directory-to-remote rclone copy. RemoteDir is the exact
+// destination — rclone lands LocalDir's contents there directly, with no
+// implicit subfolder.
 type Job struct {
-	Artist    string
-	Role      string
+	Target    Target
 	LocalDir  string
 	RemoteDir string
 }
 
-// LibraryArtist is the pseudo artist name used to address the single
-// machine-level User Library backup job via the existing --artist flag
-// (e.g. `abletonctl backup --artist user-library`), rather than adding a
-// separate flag for what is otherwise just another backup job.
-const LibraryArtist = "user-library"
+// BuildJobs returns the backup jobs configured in cfg, filtered to
+// targetFilter when non-empty ("projects" or "demos"). A target with an
+// empty local dir or remote is treated as unconfigured: silently omitted
+// when no filter is given, or an error when explicitly requested.
+func BuildJobs(cfg *config.Config, targetFilter string) ([]Job, error) {
+	if targetFilter != "" && targetFilter != string(Projects) && targetFilter != string(Demos) {
+		return nil, fmt.Errorf("unknown target %q (want %q or %q)", targetFilter, Projects, Demos)
+	}
 
-// libraryRole is the pseudo role name reported for the User Library job.
-// The library has no configurable roles, so this is purely cosmetic output.
-const libraryRole = "library"
-
-// BuildJobs expands the registry into concrete copy jobs, filtered by
-// artist/role when non-empty. Each role's glob may match multiple local
-// directories (e.g. several PRODUCTION-YYYY years); each becomes its own job,
-// copied to a like-named subfolder of the role's remote.
-//
-// If the registry has a [library] section, its backup job is included
-// whenever neither filter narrows the run to a specific artist/role, or
-// selected on its own via artistFilter == LibraryArtist.
-func BuildJobs(reg *config.Registry, artistFilter, roleFilter string) ([]Job, error) {
-	if artistFilter == LibraryArtist {
-		if roleFilter != "" {
-			return nil, fmt.Errorf("%q has no roles; omit --role", LibraryArtist)
-		}
-		job, err := libraryJob(reg)
-		if err != nil {
-			return nil, err
-		}
-		if job == nil {
-			return nil, fmt.Errorf("no [library] configured in the registry")
-		}
-		return []Job{*job}, nil
+	candidates := []Job{
+		{Target: Projects, LocalDir: cfg.ProjectsDir, RemoteDir: cfg.ProjectsRemote},
+		{Target: Demos, LocalDir: cfg.DemosDir, RemoteDir: cfg.DemosRemote},
 	}
 
 	var jobs []Job
-
-	if artistFilter == "" && roleFilter == "" {
-		job, err := libraryJob(reg)
-		if err != nil {
-			return nil, err
+	for _, j := range candidates {
+		if targetFilter != "" && string(j.Target) != targetFilter {
+			continue
 		}
-		if job != nil {
-			jobs = append(jobs, *job)
-		}
-	}
-
-	artists := reg.ArtistNames()
-	if artistFilter != "" {
-		artists = []string{artistFilter}
-		if _, ok := reg.Artists[artistFilter]; !ok {
-			return nil, fmt.Errorf("artist %q is not registered", artistFilter)
-		}
-	}
-
-	for _, artist := range artists {
-		root, ok := reg.Artists[artist]
-		if !ok {
-			return nil, fmt.Errorf("artist %q is not registered", artist)
-		}
-
-		artistCfg, err := config.LoadArtistConfig(root)
-		if err != nil {
-			return nil, fmt.Errorf("artist %q: %w", artist, err)
-		}
-
-		roles := artistCfg.RoleNames()
-		if roleFilter != "" {
-			if _, ok := artistCfg.Roles[roleFilter]; !ok {
-				return nil, fmt.Errorf("artist %q has no role %q", artist, roleFilter)
+		if j.LocalDir == "" || j.RemoteDir == "" {
+			if targetFilter == string(j.Target) {
+				return nil, fmt.Errorf("%s target is not fully configured (need both a directory and a remote)", j.Target)
 			}
-			roles = []string{roleFilter}
+			continue
 		}
-
-		for _, roleName := range roles {
-			role := artistCfg.Roles[roleName]
-			dirs, err := discovery.MatchRoleDirs(root, role.Glob)
-			if err != nil {
-				return nil, fmt.Errorf("artist %q role %q: %w", artist, roleName, err)
-			}
-			for _, dir := range dirs {
-				jobs = append(jobs, Job{
-					Artist:    artist,
-					Role:      roleName,
-					LocalDir:  dir,
-					RemoteDir: joinRemote(role.Remote, filepath.Base(dir)),
-				})
-			}
-		}
+		jobs = append(jobs, j)
 	}
-
-	sort.Slice(jobs, func(i, j int) bool {
-		if jobs[i].Artist != jobs[j].Artist {
-			return jobs[i].Artist < jobs[j].Artist
-		}
-		if jobs[i].Role != jobs[j].Role {
-			return jobs[i].Role < jobs[j].Role
-		}
-		return jobs[i].LocalDir < jobs[j].LocalDir
-	})
-
 	return jobs, nil
-}
-
-func joinRemote(remote, name string) string {
-	return strings.TrimRight(remote, "/") + "/" + name
-}
-
-// libraryJob builds the User Library backup job from reg.Library, or returns
-// nil if no [library] section is configured.
-func libraryJob(reg *config.Registry) (*Job, error) {
-	if reg.Library == nil {
-		return nil, nil
-	}
-	if reg.Library.Remote == "" {
-		return nil, fmt.Errorf("[library] is configured but has no remote")
-	}
-	path, err := reg.Library.ResolvedPath()
-	if err != nil {
-		return nil, fmt.Errorf("resolving user library path: %w", err)
-	}
-	return &Job{
-		Artist:    LibraryArtist,
-		Role:      libraryRole,
-		LocalDir:  path,
-		RemoteDir: joinRemote(reg.Library.Remote, filepath.Base(path)),
-	}, nil
 }
 
 // CopyArgs builds the rclone argv for copying a job. copy (not sync) is used

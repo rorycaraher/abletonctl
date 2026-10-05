@@ -422,7 +422,7 @@ func applyCollect(alsPath, projectRoot string, toCollect []collectEntry, lines [
 
 	rollback := func() {
 		for _, p := range newlyCreated {
-			os.Remove(p)
+			_ = os.Remove(p)
 		}
 	}
 
@@ -535,7 +535,7 @@ func writeGzip(path, content string) error {
 		return err
 	}
 	if _, err := gz.Write([]byte(content)); err != nil {
-		gz.Close()
+		_ = gz.Close()
 		return err
 	}
 	return gz.Close()

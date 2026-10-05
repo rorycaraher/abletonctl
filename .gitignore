@@ -1,2 +1,4 @@
 /abletonctl
 .claude
+# Added by goreleaser init:
+dist/

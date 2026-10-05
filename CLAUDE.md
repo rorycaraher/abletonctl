@@ -97,14 +97,6 @@ formatting:
   verifying the output exists and is non-empty (`Convert` then `os.Remove`
   in `ConvertAndCleanup`); a failed conversion never triggers a delete.
 
-- **`internal/tracks`** — CSV-backed track catalog
-  (`<artist-root>/.abletonctl-tracks.csv`). The header row *is* the schema:
-  `Track` is the only required/identity column; every other column is a
-  freeform string, and `Catalog.ensureColumn` appends new ones on the fly
-  from `track add`/`set` `Key=Value` pairs with no code change. Blank rows
-  (used as visual dividers when hand-edited in a spreadsheet) are dropped
-  on `Load` and not preserved on `Save`.
-
 ## Conventions worth preserving when extending
 
 - Favor structural detection (a glob, a required file's presence) over

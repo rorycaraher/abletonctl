@@ -1,0 +1,41 @@
+[tools]
+go = "1.25"
+golangci-lint = "latest"
+pre-commit = "latest"
+gitleaks = "latest"
+actionlint = "latest"
+
+[tasks.build]
+description = "Build the abletonctl binary"
+run = "go build -o abletonctl ./cmd/abletonctl"
+
+[tasks.fmt]
+description = "Format Go code"
+run = "gofmt -w ."
+
+[tasks.vet]
+description = "Run go vet"
+run = "go vet ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run ./..."
+
+[tasks.test]
+description = "Run unit tests"
+run = "go test ./..."
+
+[tasks.check]
+description = "Everything CI runs: format check, vet, lint, test"
+depends = ["fmt-check", "vet", "lint", "test"]
+
+[tasks.fmt-check]
+description = "Fail if any Go file is not gofmt-clean"
+run = '''
+out=$(gofmt -l .)
+if [ -n "$out" ]; then echo "needs gofmt:"; echo "$out"; exit 1; fi
+'''
+
+[tasks.hooks]
+description = "Install the git pre-commit hook"
+run = "pre-commit install"
