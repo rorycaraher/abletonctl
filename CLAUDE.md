@@ -53,11 +53,14 @@ dependency.
   errcheck noise (deferred `Close` on read-only files, and all of `_test.go`)
   and the staticcheck style rules `QF1002`/`ST1005`.
 - `.pre-commit-config.yaml`: on commit, file hygiene + gofmt + `go vet` +
-  golangci-lint + gitleaks; `go test` on pre-push.
-- `.github/workflows/ci.yml` runs `mise run check`, `actionlint` and
-  `gitleaks` on PRs and pushes to `main`.
+  golangci-lint + gitleaks, plus `actionlint` when a workflow file changes;
+  `go test` on pre-push.
+- `.github/workflows/ci.yml` runs `mise run check` and `gitleaks` on PRs and
+  pushes to `main`. `actionlint.yml` runs `actionlint` only when `.github/**`
+  changes (it installs just that tool).
 - `.github/workflows/release.yml` runs goreleaser (`.goreleaser.yaml`) on
-  `v*` tags. goreleaser injects `main.version` via ldflags.
+  `v*` tags, using the Go version from `go.mod`. goreleaser injects
+  `main.version` via ldflags.
 
 ## Architecture
 

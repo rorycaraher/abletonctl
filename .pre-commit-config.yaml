@@ -28,6 +28,11 @@ repos:
         language: system
         types: [go]
         pass_filenames: false
+      - id: actionlint
+        name: actionlint
+        entry: mise exec -- actionlint
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
       - id: gitleaks
         name: gitleaks
         entry: gitleaks git --pre-commit --staged --redact --no-banner

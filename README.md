@@ -191,9 +191,11 @@ mise run check     # gofmt check, vet, lint, test (same as CI)
 mise run hooks     # install the git pre-commit hook (once per clone)
 ```
 
-The pre-commit hook runs gofmt, `go vet`, golangci-lint and gitleaks;
-`go test` runs on pre-push. CI (`.github/workflows/ci.yml`) runs
-`mise run check`, actionlint and gitleaks on every PR and push to `main`.
+The pre-commit hook runs gofmt, `go vet`, golangci-lint and gitleaks (and
+actionlint when a workflow file changes); `go test` runs on pre-push. CI
+(`.github/workflows/ci.yml`) runs `mise run check` and gitleaks on every PR
+and push to `main`; a separate workflow runs actionlint only when
+`.github/**` changes.
 
 See `IDEAS.md` for features considered but not (yet) built, and
 `docs/adr/` for the reasoning behind bigger structural decisions.
