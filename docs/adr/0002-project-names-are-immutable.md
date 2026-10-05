@@ -19,3 +19,7 @@ This is why discovery, the Track Catalog, and Demo matching all key off
 folder/file names directly with no ID layer — it's a deliberate
 simplification that only holds because renaming in place is disallowed by
 convention, not by code.
+
+Update: Demo matching turned out to be keyed on the Version slug (the `.als`
+name), not the Project folder name, so the same convention now covers
+Version names too; see [0003](0003-demos-link-to-versions-by-filename.md).

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 
 	"github.com/rorycaraher/abletonctl/internal/config"
 )
@@ -77,4 +78,34 @@ func Run(j Job, dryRun bool, stdout, stderr io.Writer) error {
 		return fmt.Errorf("rclone copy %s -> %s: %w", j.LocalDir, j.RemoteDir, err)
 	}
 	return nil
+}
+
+// ListArgs builds the rclone argv for listing every file under a remote,
+// recursively, as paths relative to it. The timeouts keep an unreachable
+// remote from hanging the command for minutes.
+func ListArgs(remote string) []string {
+	return []string{"lsf", "--recursive", "--files-only", "--contimeout", "20s", "--timeout", "60s", remote}
+}
+
+// ListRemote lists the files under remote via the rclone binary and returns
+// their paths relative to it, slash-separated. It only reads.
+func ListRemote(remote string) ([]string, error) {
+	cmd := exec.Command("rclone", ListArgs(remote)...)
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			return nil, fmt.Errorf("rclone lsf %s: %w", remote, err)
+		}
+		return nil, fmt.Errorf("rclone lsf %s: %w: %s", remote, err, msg)
+	}
+	var paths []string
+	for _, line := range strings.Split(string(out), "\n") {
+		if line = strings.TrimSpace(line); line != "" {
+			paths = append(paths, line)
+		}
+	}
+	return paths, nil
 }

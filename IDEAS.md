@@ -18,12 +18,16 @@ backup, and sample-orphan finding.
   started, rather than treating all years identically forever.
 - **BPM/key tagging report.** Parse tempo/key metadata out of `.als` files
   across a namespace and produce a searchable index.
-- **Render-naming / demos cross-referencing.** Link `demos/*.aiff` renders
-  back to the project that produced them (e.g. by naming convention or
-  embedded metadata), to answer "which project made this file" later.
+- **`link` command to rename legacy Demos.** Demos link to Versions by name
+  (see `docs/adr/0003`); older Demos with plain human names show as
+  `unlinked`. A command that renames one to `<version-slug>__<name>` would
+  migrate them, but needs a dry-run, must move the `.asd` sidecar too, and
+  `backup` uses `rclone copy`, so the old name stays on the remote beside
+  the new one.
 - **Restore verification.** A command that spot-checks a remote against
   local state (existence + size, not full re-download) to catch a backup
-  that's silently been failing.
+  that's silently been failing. (`demos --remote` already compares local
+  and remote Demos by name only; a content/size check would build on it.)
 - **Premaster directory** another directory beside demos for premasters,
   and a script that uses ffmpeg to check if premaster files are lossless,
   have headroom, ideal bit depth/sample rate.
@@ -68,7 +72,7 @@ backup, and sample-orphan finding.
   register it in one step - `abletonctl new <name> --template X` - so
   every project starts from a known-good baseline instead of drifting
   from whatever the last project happened to look like.
-- **Superseded-project marking.** Retitle (see `docs/adr/0001`) leaves the
+- **Superseded-project marking.** Retitle (see `docs/adr/0002`) leaves the
   pre-Retitle Project folder in place, untouched, with nothing marking it
   as no longer current. `prune-samples`, `backup`, and `tracks` keep
   treating it as fully live indefinitely, and a stale Track Catalog row
