@@ -24,7 +24,8 @@ go test ./internal/samples/ -run TestScan   # single test
 go build -o abletonctl ./cmd/abletonctl     # build the CLI binary
 ```
 
-There is no separate lint config beyond `go vet`. `collect` and `demos`
+Tooling is pinned in `mise.toml`; `mise run check` runs the same gofmt check,
+`go vet`, golangci-lint (`.golangci.yml`) and tests as CI. `collect` and `demos`
 tests may shell out to real `ffmpeg`/binary behavior indirectly through
 fixtures — check the relevant `_test.go` before assuming pure-Go isolation.
 
@@ -33,17 +34,23 @@ time); `convert-demos` requires `ffmpeg`. Neither is a Go dependency.
 
 ## Architecture
 
-Single-binary CLI, one flat command dispatch in `cmd/abletonctl/main.go`
-(a `switch` on `os.Args[1]`, no CLI framework). Each subcommand's `run*`
-function parses its own args — most via `flag.FlagSet`, but `prune-samples`,
-`collect`, and `track add/set` parse by hand because they mix positional
-arguments (a path, or trailing `Key=Value` pairs) with flags in ways
-`flag.FlagSet` can't express (it stops recognizing flags after the first
-positional). Keep that pattern if extending those commands.
+Single-binary CLI built on [cobra](https://github.com/spf13/cobra). `main.go`
+only sets `version` (injected by goreleaser) and runs `newRootCmd()` from
+`root.go`; each command lives in its own file in `cmd/abletonctl/`
+(`backup.go`, `projects.go`, `config.go`, `orphans.go`, `collect.go`,
+`demos.go`) as a `newXCmd()` constructor. Add a command by writing a
+constructor and registering it in `newRootCmd()`. Flags go on the command
+(`cmd.Flags()`), and `--config` is added only to commands that read the
+config file, via `addConfigFlag`. Shell completion
+(`abletonctl completion zsh|bash|fish|powershell`) comes from cobra: give
+flags with a fixed set of values a `RegisterFlagCompletionFunc`, and
+path arguments a `ValidArgsFunction`. Long flags are `--double-dash` only
+(pflag), and errors are returned from `RunE` and printed by `main()` as
+`abletonctl: <err>`.
 
-All actual logic lives in `internal/`, one package per concern, with
-`main.go` doing only argument parsing, orchestration, and output
-formatting:
+All actual logic lives in `internal/`, one package per concern, with the
+command files doing only argument handling, orchestration, and output
+formatting (`style.go` holds the lipgloss styles):
 
 - **`internal/config`** — loads the top-level artist registry
   (`~/.config/abletonctl/config.toml`, artist name → root dir, plus an
