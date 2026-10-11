@@ -94,6 +94,12 @@ abletonctl projects --remote
 abletonctl convert-demos
 abletonctl convert-demos --dry-run
 
+# Render a Version to wav by driving Ableton Live's Export dialog (macOS,
+# needs Accessibility permission for your terminal). Writes
+# <demos_dir>/<version-slug>.wav unless --output is given; never overwrites.
+abletonctl export ~/Music/Projects/Song/song-03.als
+abletonctl export song-03.als --output ~/Desktop/song-03.wav
+
 # Back up both projects_dir and demos_dir.
 abletonctl backup
 
