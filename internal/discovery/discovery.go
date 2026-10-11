@@ -34,29 +34,6 @@ func ProjectName(folder string) string {
 	return folder
 }
 
-// FindProject returns the project called name. The " Project" suffix is
-// optional in name. Two folders that strip to the same name are an error.
-func FindProject(projects []Project, name string) (Project, error) {
-	want := ProjectName(name)
-	var found []Project
-	for _, p := range projects {
-		if p.Name == want {
-			found = append(found, p)
-		}
-	}
-	switch len(found) {
-	case 0:
-		return Project{}, fmt.Errorf("no project named %q", want)
-	case 1:
-		return found[0], nil
-	}
-	paths := make([]string, len(found))
-	for i, p := range found {
-		paths[i] = p.Path
-	}
-	return Project{}, fmt.Errorf("project name %q is ambiguous: %s", want, strings.Join(paths, ", "))
-}
-
 // SamplesDir returns the project's Samples directory path, which may not exist.
 func (p Project) SamplesDir() string {
 	return filepath.Join(p.Path, "Samples")

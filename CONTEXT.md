@@ -60,8 +60,7 @@ _Avoid_: Live Set, set, revision
 A Version's file name without `.als` (`43-missed-calls-RESHAPE-03`). Not
 unique across Projects, and one slug may be a prefix of another
 (`bell-04`, `bell-04-2026`). A Version may carry its own descriptor
-(`bell-04__alt.als`); Demos link to the part before the first `__`, and
-`export latest` orders Versions by it.
+(`bell-04__alt.als`); Demos link to the part before the first `__`.
 _Avoid_: Version stem (a "stem" is a rendered audio stem), project name,
 version name
 

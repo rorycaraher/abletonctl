@@ -94,17 +94,6 @@ abletonctl projects --remote
 abletonctl convert-demos
 abletonctl convert-demos --dry-run
 
-# Render a Version to wav by driving Ableton Live's Export dialog (macOS,
-# needs Accessibility permission for your terminal). Writes
-# <demos_dir>/<version-slug>.wav unless --output is given; never overwrites.
-abletonctl export ~/Music/Projects/Song/song-03.als
-abletonctl export song-03.als --output ~/Desktop/song-03.wav
-
-# Export the highest-numbered Version of a Project, by the number in the
-# file name (not modification time). The " Project" suffix is optional, and
-# a "__descriptor" in the .als name is ignored: song-04__alt.als is song-04.
-abletonctl export latest installations
-
 # Back up both projects_dir and demos_dir.
 abletonctl backup
 
