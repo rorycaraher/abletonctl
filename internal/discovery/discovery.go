@@ -14,11 +14,47 @@ import (
 // Project is an Ableton project folder: a directory with one or more
 // top-level .als files.
 type Project struct {
+	// Name is the folder name without the " Project" suffix Live appends
+	// to project folders.
 	Name string
 	Path string
 	// AlsFiles are absolute paths to the top-level .als files in this
 	// project (Ableton's auto-generated Backup/ subfolder is not scanned).
 	AlsFiles []string
+}
+
+const folderSuffix = " Project"
+
+// ProjectName strips the " Project" suffix Live appends to project folder
+// names. A folder named exactly " Project" is left as is.
+func ProjectName(folder string) string {
+	if n := strings.TrimSuffix(folder, folderSuffix); n != "" {
+		return n
+	}
+	return folder
+}
+
+// FindProject returns the project called name. The " Project" suffix is
+// optional in name. Two folders that strip to the same name are an error.
+func FindProject(projects []Project, name string) (Project, error) {
+	want := ProjectName(name)
+	var found []Project
+	for _, p := range projects {
+		if p.Name == want {
+			found = append(found, p)
+		}
+	}
+	switch len(found) {
+	case 0:
+		return Project{}, fmt.Errorf("no project named %q", want)
+	case 1:
+		return found[0], nil
+	}
+	paths := make([]string, len(found))
+	for i, p := range found {
+		paths[i] = p.Path
+	}
+	return Project{}, fmt.Errorf("project name %q is ambiguous: %s", want, strings.Join(paths, ", "))
 }
 
 // SamplesDir returns the project's Samples directory path, which may not exist.
@@ -48,12 +84,17 @@ func DiscoverProjects(dir string) ([]Project, error) {
 			continue
 		}
 		projects = append(projects, Project{
-			Name:     e.Name(),
+			Name:     ProjectName(e.Name()),
 			Path:     projectPath,
 			AlsFiles: alsFiles,
 		})
 	}
-	sort.Slice(projects, func(i, j int) bool { return projects[i].Name < projects[j].Name })
+	sort.Slice(projects, func(i, j int) bool {
+		if projects[i].Name != projects[j].Name {
+			return projects[i].Name < projects[j].Name
+		}
+		return projects[i].Path < projects[j].Path
+	})
 	return projects, nil
 }
 

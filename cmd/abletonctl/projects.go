@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
+	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"github.com/rorycaraher/abletonctl/internal/demolink"
@@ -48,13 +51,8 @@ func newProjectsCmd() *cobra.Command {
 			}
 
 			fmt.Println(boldStyle.Render(cfg.ProjectsDir))
-			for _, p := range projects {
-				var demoCount *int
-				if demoCounts != nil {
-					n := demoCounts[p.Path]
-					demoCount = &n
-				}
-				fmt.Println(projectLine(p, demoCount))
+			for _, line := range projectLines(projects, demoCounts) {
+				fmt.Println(line)
 			}
 			return nil
 		},
@@ -64,16 +62,30 @@ func newProjectsCmd() *cobra.Command {
 	return cmd
 }
 
-// projectLine renders one Project row; demoCount is nil when Demo counts
-// aren't available.
-func projectLine(p discovery.Project, demoCount *int) string {
-	counts := fmt.Sprintf("%d .als", len(p.AlsFiles))
-	if demoCount != nil {
-		unit := "demos"
-		if *demoCount == 1 {
-			unit = "demo"
-		}
-		counts += fmt.Sprintf(", %d %s", *demoCount, unit)
+// projectLines renders the Project rows as aligned columns: names padded to
+// the widest, counts right-aligned so the numbers line up. demoCounts (by
+// Project path) is nil when Demo counts aren't available.
+func projectLines(projects []discovery.Project, demoCounts map[string]int) []string {
+	var nameW, alsW, demoW int
+	for _, p := range projects {
+		nameW = max(nameW, lipgloss.Width(p.Name))
+		alsW = max(alsW, len(strconv.Itoa(len(p.AlsFiles))))
+		demoW = max(demoW, len(strconv.Itoa(demoCounts[p.Path])))
 	}
-	return fmt.Sprintf("  - %s %s", p.Name, dimStyle.Render("("+counts+")"))
+
+	lines := make([]string, 0, len(projects))
+	for _, p := range projects {
+		counts := fmt.Sprintf("%*d .als", alsW, len(p.AlsFiles))
+		if demoCounts != nil {
+			n := demoCounts[p.Path]
+			unit := "demos"
+			if n == 1 {
+				unit = "demo"
+			}
+			counts += fmt.Sprintf("  %*d %s", demoW, n, unit)
+		}
+		pad := strings.Repeat(" ", nameW-lipgloss.Width(p.Name))
+		lines = append(lines, fmt.Sprintf("  - %s%s  %s", p.Name, pad, dimStyle.Render(counts)))
+	}
+	return lines
 }

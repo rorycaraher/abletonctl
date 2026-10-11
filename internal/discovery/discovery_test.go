@@ -60,3 +60,29 @@ func TestDiscoverProjects_IgnoresBackupFolderAls(t *testing.T) {
 		t.Fatalf("expected exactly one top-level als, got %+v", projects)
 	}
 }
+
+func TestProjectNameAndFind(t *testing.T) {
+	if got := ProjectName("installations Project"); got != "installations" {
+		t.Errorf("ProjectName = %q", got)
+	}
+	if got := ProjectName("Track One"); got != "Track One" {
+		t.Errorf("ProjectName = %q", got)
+	}
+	ps := []Project{
+		{Name: "installations", Path: "/p/installations Project"},
+		{Name: "dup", Path: "/p/dup"},
+		{Name: "dup", Path: "/p/dup Project"},
+	}
+	for _, in := range []string{"installations", "installations Project"} {
+		p, err := FindProject(ps, in)
+		if err != nil || p.Path != "/p/installations Project" {
+			t.Errorf("FindProject(%q) = %v, %v", in, p, err)
+		}
+	}
+	if _, err := FindProject(ps, "missing"); err == nil {
+		t.Error("want error for missing project")
+	}
+	if _, err := FindProject(ps, "dup"); err == nil {
+		t.Error("want error for ambiguous project")
+	}
+}

@@ -100,6 +100,11 @@ abletonctl convert-demos --dry-run
 abletonctl export ~/Music/Projects/Song/song-03.als
 abletonctl export song-03.als --output ~/Desktop/song-03.wav
 
+# Export the highest-numbered Version of a Project, by the number in the
+# file name (not modification time). The " Project" suffix is optional, and
+# a "__descriptor" in the .als name is ignored: song-04__alt.als is song-04.
+abletonctl export latest installations
+
 # Back up both projects_dir and demos_dir.
 abletonctl backup
 

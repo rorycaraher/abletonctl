@@ -24,7 +24,10 @@ _Avoid_: Demos role, demos glob
 Any direct child of the Projects directory that contains a top-level `.als`
 file. Directories without one (reference material, sample packs, etc.) are
 skipped automatically. Only top-level `.als` files count — Ableton's
-auto-generated `Backup/` folder is never scanned.
+auto-generated `Backup/` folder is never scanned. A Project's name is its
+folder name without the ` Project` suffix Live appends (`installations
+Project` is `installations`); the suffix is optional wherever a name is
+accepted.
 
 **Backup target**:
 One of the two things `backup` can copy to a remote: the Projects directory
@@ -56,7 +59,9 @@ _Avoid_: Live Set, set, revision
 **Version slug**:
 A Version's file name without `.als` (`43-missed-calls-RESHAPE-03`). Not
 unique across Projects, and one slug may be a prefix of another
-(`bell-04`, `bell-04-2026`).
+(`bell-04`, `bell-04-2026`). A Version may carry its own descriptor
+(`bell-04__alt.als`); Demos link to the part before the first `__`, and
+`export latest` orders Versions by it.
 _Avoid_: Version stem (a "stem" is a rendered audio stem), project name,
 version name
 

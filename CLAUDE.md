@@ -78,7 +78,7 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 | `orphans.go` | `find-orphans <project-path> [--quarantine]` |
 | `collect.go` | `collect <.als>` / `collect --all <dir>` |
 | `demos.go` | `convert-demos [--dry-run]` |
-| `export.go` | `export <.als> [--output <wav>]` |
+| `export.go` | `export <.als> [--output <wav>]`, `export latest <project-name>` |
 | `demos_list.go` | `demos [--project <path>] [--remote]` (Demo to Version links) |
 | `style.go` | lipgloss styles (no command) |
 
@@ -159,7 +159,8 @@ files do only argument handling, orchestration, and output formatting:
   tagging each `Location` (`Local`/`Remote`/`Both`, by name only, never by
   content). The remote listing itself comes from `backup.ListRemote`, so this
   package never shells out. `Resolve`
-  indexes every Project's `.als` slugs and classifies each Demo as `Linked`,
+  indexes every Project's `.als` slugs (cut at the first `__`, so
+  `song-03__alt.als` is indexed as `song-03`) and classifies each Demo as `Linked`,
   `Ambiguous` (slug in 2+ Projects), `Dangling` (has `__`, no match) or
   `Unlinked`. Matching is exact and case-sensitive, never prefix-based.
   See `docs/adr/0003-demos-link-to-versions-by-filename.md`.
@@ -170,6 +171,11 @@ files do only argument handling, orchestration, and output formatting:
   needs Accessibility permission; returns once keys are sent, not when the
   render finishes. Validates paths and refuses to overwrite; the `Runner`
   is injected so tests need no osascript.
+
+- **`internal/versions`** — `Latest` picks a Project's newest Version by
+  the number in the file name (never mtime): key = name before the first
+  `__`, compared naturally so `bell-04-2026-02` > `bell-04-2026` >
+  `bell-04`. Unnumbered files are ignored; a tie is an error, not a guess.
 
 - **`internal/demos`** — converts `aiff`/`wav` under the demos directory to
   320k CBR mp3 via `ffmpeg` and deletes the original **only** after

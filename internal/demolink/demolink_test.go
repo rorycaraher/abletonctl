@@ -108,11 +108,21 @@ func TestResolveLinkedVersionAndAmbiguousCandidates(t *testing.T) {
 		"b Project": {"Untitled"},
 	})
 	links := Resolve([]Demo{demo("song-01__x"), demo("Untitled")}, ps)
-	if v := links[0].Version; v == nil || v.ProjectName != "a Project" || v.Slug != "song-01" {
+	if v := links[0].Version; v == nil || v.ProjectName != "a" || v.Slug != "song-01" {
 		t.Fatalf("linked version = %+v", v)
 	}
 	if n := len(links[1].Candidates); links[1].Status != Ambiguous || n != 2 {
 		t.Fatalf("ambiguous = %+v", links[1])
+	}
+}
+
+func TestResolveVersionWithOwnDescriptor(t *testing.T) {
+	ps := projects(t, map[string][]string{"a Project": {"song-03__alt", "song-02"}})
+	links := Resolve([]Demo{demo("song-03"), demo("song-03__alt"), demo("song-03__alt__kick")}, ps)
+	for _, l := range links {
+		if l.Status != Linked || l.Version == nil || l.Version.Slug != "song-03__alt" {
+			t.Errorf("%s: %+v", l.Demo.Name, l)
+		}
 	}
 }
 
@@ -219,7 +229,7 @@ func TestForProjectAndCount(t *testing.T) {
 
 	var a, b string
 	for _, p := range ps {
-		if p.Name == "a Project" {
+		if p.Name == "a" {
 			a = p.Path
 		} else {
 			b = p.Path
