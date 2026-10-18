@@ -72,7 +72,7 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 
 | File | Command(s) |
 |---|---|
-| `backup.go` | `backup [--target projects\|demos] [--dry-run]` |
+| `backup.go` | `backup [--target projects\|demos] [--dry-run] [--quiet] [--yes]` |
 | `projects.go` | `projects [--remote]` (lists projects with `.als` and linked-Demo counts) |
 | `config.go` | `config check` |
 | `orphans.go` | `find-orphans <project-path> [--quarantine]` |

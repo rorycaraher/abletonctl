@@ -60,9 +60,13 @@ func BuildJobs(cfg *config.Config, targetFilter string) ([]Job, error) {
 
 // CopyArgs builds the rclone argv for copying a job. copy (not sync) is used
 // deliberately: it never deletes files on the remote, so a local mistake
-// can't take out the only backup copy too.
-func CopyArgs(j Job, dryRun bool) []string {
-	args := []string{"copy", j.LocalDir, j.RemoteDir}
+// can't take out the only backup copy too. Unless quiet, -v makes rclone log
+// each file it transfers. Finder's .DS_Store files are excluded at any depth.
+func CopyArgs(j Job, dryRun, quiet bool) []string {
+	args := []string{"copy", j.LocalDir, j.RemoteDir, "--exclude", ".DS_Store"}
+	if !quiet {
+		args = append(args, "-v")
+	}
 	if dryRun {
 		args = append(args, "--dry-run")
 	}
@@ -70,8 +74,8 @@ func CopyArgs(j Job, dryRun bool) []string {
 }
 
 // Run executes a single job via the rclone binary, streaming its output.
-func Run(j Job, dryRun bool, stdout, stderr io.Writer) error {
-	cmd := exec.Command("rclone", CopyArgs(j, dryRun)...)
+func Run(j Job, dryRun, quiet bool, stdout, stderr io.Writer) error {
+	cmd := exec.Command("rclone", CopyArgs(j, dryRun, quiet)...)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {

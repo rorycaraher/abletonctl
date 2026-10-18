@@ -69,13 +69,18 @@ func TestBuildJobs_UnconfiguredTargetExplicitlyRequestedErrors(t *testing.T) {
 
 func TestCopyArgs_UsesCopyNotSyncAndNeverDeletes(t *testing.T) {
 	j := Job{LocalDir: "/local/dir", RemoteDir: "r2:bucket/dir"}
-	args := CopyArgs(j, false)
-	want := []string{"copy", "/local/dir", "r2:bucket/dir"}
+	args := CopyArgs(j, false, true)
+	want := []string{"copy", "/local/dir", "r2:bucket/dir", "--exclude", ".DS_Store"}
 	if !reflect.DeepEqual(args, want) {
 		t.Fatalf("got %v, want %v", args, want)
 	}
 
-	dryRunArgs := CopyArgs(j, true)
+	verbose := CopyArgs(j, false, false)
+	if !reflect.DeepEqual(verbose, append(want, "-v")) {
+		t.Fatalf("expected -v unless quiet: %v", verbose)
+	}
+
+	dryRunArgs := CopyArgs(j, true, true)
 	if dryRunArgs[len(dryRunArgs)-1] != "--dry-run" {
 		t.Fatalf("expected --dry-run to be passed through: %v", dryRunArgs)
 	}
