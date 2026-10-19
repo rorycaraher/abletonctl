@@ -20,8 +20,10 @@ func TestLoad(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "config.toml")
 	writeFile(t, path, `
+ableton_dir = "/path/to/ableton"
 projects_dir = "/path/to/projects"
 demos_dir = "/path/to/demos"
+ableton_remote = "r2:my-bucket/ableton"
 projects_remote = "r2:my-bucket/projects"
 demos_remote = "gdrive:my-demos"
 `)
@@ -30,11 +32,17 @@ demos_remote = "gdrive:my-demos"
 	if err != nil {
 		t.Fatal(err)
 	}
+	if cfg.AbletonDir != "/path/to/ableton" {
+		t.Fatalf("got %q", cfg.AbletonDir)
+	}
 	if cfg.ProjectsDir != "/path/to/projects" {
 		t.Fatalf("got %q", cfg.ProjectsDir)
 	}
 	if cfg.DemosDir != "/path/to/demos" {
 		t.Fatalf("got %q", cfg.DemosDir)
+	}
+	if cfg.AbletonRemote != "r2:my-bucket/ableton" {
+		t.Fatalf("got %q", cfg.AbletonRemote)
 	}
 	if cfg.ProjectsRemote != "r2:my-bucket/projects" {
 		t.Fatalf("got %q", cfg.ProjectsRemote)

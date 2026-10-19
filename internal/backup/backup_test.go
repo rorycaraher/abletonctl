@@ -13,6 +13,8 @@ func fullConfig() *config.Config {
 		DemosDir:       "/local/demos",
 		ProjectsRemote: "r2:my-bucket/projects",
 		DemosRemote:    "gdrive:my-demos",
+		AbletonDir:     "/local/user-library",
+		AbletonRemote:  "r2:my-bucket/user-library",
 	}
 }
 
@@ -21,12 +23,13 @@ func TestBuildJobs_BothTargetsByDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(jobs) != 2 {
-		t.Fatalf("got %d jobs, want 2: %+v", len(jobs), jobs)
+	if len(jobs) != 3 {
+		t.Fatalf("got %d jobs, want 3: %+v", len(jobs), jobs)
 	}
 	want := []Job{
 		{Target: Projects, LocalDir: "/local/projects", RemoteDir: "r2:my-bucket/projects"},
 		{Target: Demos, LocalDir: "/local/demos", RemoteDir: "gdrive:my-demos"},
+		{Target: Ableton, LocalDir: "/local/user-library", RemoteDir: "r2:my-bucket/user-library"},
 	}
 	if !reflect.DeepEqual(jobs, want) {
 		t.Fatalf("got %+v, want %+v", jobs, want)

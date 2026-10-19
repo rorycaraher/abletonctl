@@ -17,7 +17,7 @@ func newBackupCmd() *cobra.Command {
 	var dryRun, quiet, yes bool
 	cmd := &cobra.Command{
 		Use:   "backup",
-		Short: "Back up the projects and demos directories to rclone remotes",
+		Short: "Back up the projects, demos and Ableton directories to rclone remotes",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(configPath)
@@ -59,13 +59,13 @@ func newBackupCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&target, "target", "", "limit to one backup target (projects or demos)")
+	cmd.Flags().StringVar(&target, "target", "", "limit to one backup target (projects, demos or ableton)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "pass --dry-run through to rclone")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "don't list each file as it is copied")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "skip the confirmation prompt")
 	addConfigFlag(cmd, &configPath)
 	_ = cmd.RegisterFlagCompletionFunc("target", cobra.FixedCompletions(
-		[]string{string(backup.Projects), string(backup.Demos)}, cobra.ShellCompDirectiveNoFileComp))
+		[]string{string(backup.Projects), string(backup.Demos), string(backup.Ableton)}, cobra.ShellCompDirectiveNoFileComp))
 	return cmd
 }
 

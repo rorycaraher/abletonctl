@@ -72,7 +72,7 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 
 | File | Command(s) |
 |---|---|
-| `backup.go` | `backup [--target projects\|demos] [--dry-run] [--quiet] [--yes]` |
+| `backup.go` | `backup [--target projects\|demos\|ableton] [--dry-run] [--quiet] [--yes]` |
 | `projects.go` | `projects [--remote]` (lists projects with `.als` and linked-Demo counts) |
 | `config.go` | `config check` |
 | `orphans.go` | `find-orphans <project-path> [--quarantine]` |
@@ -99,8 +99,9 @@ All actual logic lives in `internal/`, one package per concern; the command
 files do only argument handling, orchestration, and output formatting:
 
 - **`internal/config`** — loads the single flat config file
-  (`~/.config/abletonctl/config.toml`): `projects_dir`, `demos_dir`, and a
-  rclone remote for each (`projects_remote`, `demos_remote`). Pure data
+  (`~/.config/abletonctl/config.toml`): `projects_dir`, `demos_dir`, `ableton_dir`
+  (User Library), and a rclone remote for each (`projects_remote`,
+  `demos_remote`, `ableton_remote`). Pure data
   loading. See `examples/config.toml`.
 
 - **`internal/configcheck`** — backs `config check`. Re-decodes the config
@@ -121,7 +122,7 @@ files do only argument handling, orchestration, and output formatting:
   into a list of `Job{Target, LocalDir, RemoteDir}` via `BuildJobs`, then runs
   each through `rclone copy` (never `sync` — copy only adds/updates on the
   remote, so a local mistake can't destroy the remote copy too). There are
-  exactly two fixed targets, projects and demos; a target missing its
+  exactly three fixed targets, projects, demos and ableton; a target missing its
   directory or remote is skipped, or an error if explicitly requested.
   `ListArgs`/`ListRemote` list a remote's files (`rclone lsf`, read-only) for
   `demos --remote`.

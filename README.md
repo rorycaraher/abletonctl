@@ -59,6 +59,10 @@ demos_dir = "/path/to/your/demos"
 
 projects_remote = "r2:my-bucket/projects"
 demos_remote = "gdrive:my-demos"
+
+# Optional: the Ableton User Library.
+ableton_dir = "/path/to/your/User Library"
+ableton_remote = "r2:my-bucket/user-library"
 ```
 
 Backups always use `rclone copy` (never `sync`) - they only add/update files

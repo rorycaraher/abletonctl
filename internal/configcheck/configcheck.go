@@ -128,6 +128,7 @@ func Check(path string, env Env) []Result {
 			}
 		}
 	}
+	checkDir("ableton_dir", cfg.AbletonDir, false)
 	checkDir("projects_dir", cfg.ProjectsDir, true)
 	checkDir("demos_dir", cfg.DemosDir, false)
 
@@ -143,6 +144,7 @@ func Check(path string, env Env) []Result {
 			add(Fail, "%s %q has no \"name:\" prefix", remoteKey, remote)
 		}
 	}
+	pair("ableton_dir", cfg.AbletonDir, "ableton_remote", cfg.AbletonRemote)
 	pair("projects_dir", cfg.ProjectsDir, "projects_remote", cfg.ProjectsRemote)
 	pair("demos_dir", cfg.DemosDir, "demos_remote", cfg.DemosRemote)
 

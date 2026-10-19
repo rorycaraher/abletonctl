@@ -1,5 +1,6 @@
-// Package backup builds and runs rclone copy jobs for the two fixed backup
-// targets: the projects directory and the demos directory.
+// Package backup builds and runs rclone copy jobs for the three fixed backup
+// targets: the projects directory, the demos directory and the Ableton User
+// Library directory.
 package backup
 
 import (
@@ -11,12 +12,13 @@ import (
 	"github.com/rorycaraher/abletonctl/internal/config"
 )
 
-// Target identifies which of the two directories a Job backs up.
+// Target identifies which of the three directories a Job backs up.
 type Target string
 
 const (
 	Projects Target = "projects"
 	Demos    Target = "demos"
+	Ableton  Target = "ableton"
 )
 
 // Job is one local-directory-to-remote rclone copy. RemoteDir is the exact
@@ -29,17 +31,18 @@ type Job struct {
 }
 
 // BuildJobs returns the backup jobs configured in cfg, filtered to
-// targetFilter when non-empty ("projects" or "demos"). A target with an
+// targetFilter when non-empty ("projects", "demos" or "ableton"). A target with an
 // empty local dir or remote is treated as unconfigured: silently omitted
 // when no filter is given, or an error when explicitly requested.
 func BuildJobs(cfg *config.Config, targetFilter string) ([]Job, error) {
-	if targetFilter != "" && targetFilter != string(Projects) && targetFilter != string(Demos) {
-		return nil, fmt.Errorf("unknown target %q (want %q or %q)", targetFilter, Projects, Demos)
+	if targetFilter != "" && targetFilter != string(Projects) && targetFilter != string(Demos) && targetFilter != string(Ableton) {
+		return nil, fmt.Errorf("unknown target %q (want %q, %q or %q)", targetFilter, Projects, Demos, Ableton)
 	}
 
 	candidates := []Job{
 		{Target: Projects, LocalDir: cfg.ProjectsDir, RemoteDir: cfg.ProjectsRemote},
 		{Target: Demos, LocalDir: cfg.DemosDir, RemoteDir: cfg.DemosRemote},
+		{Target: Ableton, LocalDir: cfg.AbletonDir, RemoteDir: cfg.AbletonRemote},
 	}
 
 	var jobs []Job
