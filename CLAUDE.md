@@ -190,5 +190,29 @@ files do only argument handling, orchestration, and output formatting:
   (see `internal/*/*_test.go`) without needing `rclone`/`ffmpeg` installed;
   keep new packages structured so their core logic doesn't require shelling
   out in tests (inject the lookup, as `configcheck.Env` does).
-- `mise run check` must pass before committing. The git state is the
-  user's to change — see their global instructions.
+- `mise run check` must pass before committing.
+
+## Git
+
+This repo overrides the global "never run state-changing git commands"
+rule from `~/dotfiles/claude/AGENTS.md` — that global rule still applies
+everywhere else. In this repo only:
+
+- Claude may `git add` / `commit` / `push` autonomously, on any branch
+  **except `main`**. Before an autonomous commit, `mise run check` must
+  pass. If it fails, fix the cause or stop and report; never bypass the
+  hooks (`--no-verify`).
+- Commit messages: match the existing history's style — terse, lowercase,
+  no type-prefixes (e.g. `backup ableton user library`, not
+  `feat: backup user library`).
+- Once work on a branch is ready, Claude may open a `dev` → `main` PR
+  autonomously via `gh pr create` — no need to ask first. PR title follows
+  the same terse commit style; PR body is a short Summary + Test plan.
+- Merging into `main` stays manual, and Claude never pushes to `main`.
+  `main` has no branch protection, and it is the source for releases.
+- Creating or pushing a `v*` tag stays manual. A tag push triggers
+  `release.yml`, which runs goreleaser and publishes a GitHub release
+  (`contents: write`) with no review step.
+- Everything else the global rule covers — merge, rebase, reset, checkout
+  (branch-switch or file-restore), stash, branch create-or-delete, and tag
+  delete — stays manual here too.

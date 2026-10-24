@@ -76,7 +76,7 @@ func confirm(in *os.File, out io.Writer, question string) (bool, error) {
 	if fi, err := in.Stat(); err != nil || fi.Mode()&os.ModeCharDevice == 0 {
 		return false, fmt.Errorf("confirmation required but stdin is not a terminal; pass --yes to proceed or --dry-run to preview")
 	}
-	fmt.Fprintf(out, "%s [y/N] ", question)
+	_, _ = fmt.Fprintf(out, "%s [y/N] ", question)
 	line, err := bufio.NewReader(in).ReadString('\n')
 	if err != nil && line == "" {
 		return false, nil
