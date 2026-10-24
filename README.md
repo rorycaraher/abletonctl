@@ -59,6 +59,10 @@ demos_dir = "/path/to/your/demos"
 
 projects_remote = "r2:my-bucket/projects"
 demos_remote = "gdrive:my-demos"
+
+# Optional: the Ableton User Library.
+ableton_dir = "/path/to/your/User Library"
+ableton_remote = "r2:my-bucket/user-library"
 ```
 
 Backups always use `rclone copy` (never `sync`) - they only add/update files
@@ -88,7 +92,8 @@ abletonctl demos --remote
 abletonctl projects --remote
 
 # Convert every aiff/wav under demos_dir to a 320k mp3, then permanently
-# delete the original once the conversion is verified to have succeeded. A
+# delete the original (and its Ableton .asd analysis file) once the
+# conversion is verified to have succeeded. A
 # failed conversion never deletes its source - it's reported and left in
 # place for you to deal with by hand.
 abletonctl convert-demos
@@ -99,6 +104,13 @@ abletonctl backup
 
 # Narrow to one target, and preview without transferring.
 abletonctl backup --target demos --dry-run
+
+# Each copied file is listed by default; --quiet (-q) suppresses that.
+abletonctl backup --quiet
+
+# A real (non-dry-run) backup asks for confirmation first; --yes skips it,
+# and is required when stdin isn't a terminal (cron, scripts).
+abletonctl backup --yes
 
 # Find samples that no top-level .als in a project references anymore.
 abletonctl find-orphans ~/Music/Projects/Song

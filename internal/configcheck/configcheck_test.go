@@ -41,12 +41,14 @@ func has(rs []Result, l Level, substr string) bool {
 }
 
 func TestHealthyConfig(t *testing.T) {
-	proj, demos := t.TempDir(), t.TempDir()
+	proj, demos, lib := t.TempDir(), t.TempDir(), t.TempDir()
 	p := writeConfig(t, `
 projects_dir = "`+proj+`"
 demos_dir = "`+demos+`"
+ableton_dir = "`+lib+`"
 projects_remote = "r2:bucket/projects"
 demos_remote = "gdrive:demos"
+ableton_remote = "r2:bucket/user-library"
 `)
 	rs := Check(p, fakeEnv([]string{"rclone", "ffmpeg"}, []string{"r2", "gdrive"}))
 	if Failed(rs) {

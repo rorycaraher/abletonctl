@@ -186,7 +186,11 @@ func Resolve(demos []Demo, projects []discovery.Project) []Link {
 	for _, p := range projects {
 		for _, als := range p.AlsFiles {
 			slug := strings.TrimSuffix(filepath.Base(als), filepath.Ext(als))
-			index[slug] = append(index[slug], Version{
+			// A Version may carry its own descriptor (`song-03__alt.als`);
+			// Demos link to the part before the separator, same as Parse
+			// does for a Demo name.
+			key, _, _ := Parse(slug)
+			index[key] = append(index[key], Version{
 				Slug: slug, Path: als, ProjectName: p.Name, ProjectPath: p.Path,
 			})
 		}

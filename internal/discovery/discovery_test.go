@@ -60,3 +60,12 @@ func TestDiscoverProjects_IgnoresBackupFolderAls(t *testing.T) {
 		t.Fatalf("expected exactly one top-level als, got %+v", projects)
 	}
 }
+
+func TestProjectName(t *testing.T) {
+	if got := ProjectName("installations Project"); got != "installations" {
+		t.Errorf("ProjectName = %q", got)
+	}
+	if got := ProjectName("Track One"); got != "Track One" {
+		t.Errorf("ProjectName = %q", got)
+	}
+}

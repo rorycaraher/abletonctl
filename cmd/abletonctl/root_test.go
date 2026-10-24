@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -123,17 +124,30 @@ func TestZshCompletionParses(t *testing.T) {
 	}
 }
 
-func TestProjectLine(t *testing.T) {
-	p := discovery.Project{Name: "song Project", AlsFiles: []string{"a.als", "b.als"}}
-	if got, want := projectLine(p, nil), "  - song Project (2 .als)"; got != want {
-		t.Errorf("got %q want %q", got, want)
+func TestProjectLines(t *testing.T) {
+	ps := []discovery.Project{
+		{Name: "a", Path: "/p/a", AlsFiles: make([]string, 2)},
+		{Name: "longer name", Path: "/p/l", AlsFiles: make([]string, 12)},
+		{Name: "mid", Path: "/p/m", AlsFiles: make([]string, 1)},
 	}
-	one, many := 1, 3
-	if got, want := projectLine(p, &one), "  - song Project (2 .als, 1 demo)"; got != want {
-		t.Errorf("got %q want %q", got, want)
+	got := projectLines(ps, nil)
+	want := []string{
+		"  - a             2 .als",
+		"  - longer name  12 .als",
+		"  - mid           1 .als",
 	}
-	if got, want := projectLine(p, &many), "  - song Project (2 .als, 3 demos)"; got != want {
-		t.Errorf("got %q want %q", got, want)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("no demos:\n%q\nwant\n%q", got, want)
+	}
+
+	got = projectLines(ps, map[string]int{"/p/a": 1, "/p/l": 10, "/p/m": 0})
+	want = []string{
+		"  - a             2 .als   1 demo",
+		"  - longer name  12 .als  10 demos",
+		"  - mid           1 .als   0 demos",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("with demos:\n%q\nwant\n%q", got, want)
 	}
 }
 

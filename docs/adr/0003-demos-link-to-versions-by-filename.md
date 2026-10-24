@@ -28,3 +28,12 @@ the remote beside the new one).
 Consequence: Version names are as immutable as Project names. Renaming a
 `.als` dangles its Demos by design, and a slug that exists in two Projects
 (`Untitled`) is `ambiguous` until one is renamed.
+
+## Amendment: descriptors in Version names
+
+A Version name may carry a descriptor too (`song-03__alt.als`). Both sides
+are cut at the first `__` and the left parts compared exactly, so the rule
+is unchanged: `song-03`, `song-03__alt` and `song-03__alt__kick` all link to
+it. Two Versions with the same left part (`song-03.als` and
+`song-03__alt.als`) make their Demos `ambiguous`, never a guess. This
+replaces the earlier consequence that `__` could not appear in a `.als` name.

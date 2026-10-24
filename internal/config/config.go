@@ -1,6 +1,6 @@
 // Package config loads the flat abletonctl config file: where the projects
-// directory and demos directory live, and which rclone remote each backs up
-// to.
+// directory, demos directory and Ableton User Library directory live, and
+// which rclone remote each backs up to.
 package config
 
 import (
@@ -13,8 +13,10 @@ import (
 
 // Config is the single configuration file at ~/.config/abletonctl/config.toml.
 type Config struct {
+	AbletonDir     string `toml:"ableton_dir"`
 	ProjectsDir    string `toml:"projects_dir"`
 	DemosDir       string `toml:"demos_dir"`
+	AbletonRemote  string `toml:"ableton_remote"`
 	ProjectsRemote string `toml:"projects_remote"`
 	DemosRemote    string `toml:"demos_remote"`
 }
