@@ -92,7 +92,8 @@ abletonctl demos --remote
 abletonctl projects --remote
 
 # Convert every aiff/wav under demos_dir to a 320k mp3, then permanently
-# delete the original once the conversion is verified to have succeeded. A
+# delete the original (and its Ableton .asd analysis file) once the
+# conversion is verified to have succeeded. A
 # failed conversion never deletes its source - it's reported and left in
 # place for you to deal with by hand.
 abletonctl convert-demos

@@ -37,7 +37,7 @@ func newConvertDemosCmd() *cobra.Command {
 					failed++
 					fmt.Printf("FAILED  %s: %v\n", o.Source, o.Err)
 				case dryRun:
-					fmt.Printf("would convert %s -> %s and delete original\n", o.Source, o.Mp3)
+					fmt.Printf("would convert %s -> %s and delete original and .asd\n", o.Source, o.Mp3)
 				default:
 					converted++
 					fmt.Printf("converted %s -> %s, removed original\n", o.Source, o.Mp3)

@@ -48,6 +48,12 @@ func Mp3Path(src string) string {
 	return src[:len(src)-len(ext)] + ".mp3"
 }
 
+// AsdPath returns the path of the Ableton analysis file for a source file:
+// Live names it after the full filename, e.g. Song.wav -> Song.wav.asd.
+func AsdPath(src string) string {
+	return src + ".asd"
+}
+
 // ConvertArgs builds the ffmpeg argv for a single 320k CBR mp3 conversion.
 func ConvertArgs(src, dst string) []string {
 	return []string{
@@ -89,7 +95,7 @@ type Outcome struct {
 
 // ConvertAndCleanup converts every aiff/wav found under dir to 320k mp3 and,
 // only once a conversion is verified to have succeeded, permanently deletes
-// the original. A conversion failure never triggers a delete - the source
+// the original and its Ableton .asd analysis file (if any). A conversion failure never triggers a delete - the source
 // is left in place alongside whatever partial output ffmpeg left behind.
 //
 // In dry-run mode nothing is converted or deleted; it only reports what
@@ -118,6 +124,15 @@ func ConvertAndCleanup(dir string, dryRun bool, stdout, stderr io.Writer) ([]Out
 			outcomes = append(outcomes, Outcome{
 				Source: src, Mp3: dst,
 				Err: fmt.Errorf("converted but failed to remove original %s: %w", src, err),
+			})
+			continue
+		}
+
+		asd := AsdPath(src)
+		if err := os.Remove(asd); err != nil && !os.IsNotExist(err) {
+			outcomes = append(outcomes, Outcome{
+				Source: src, Mp3: dst, Deleted: true,
+				Err: fmt.Errorf("removed original but failed to remove %s: %w", asd, err),
 			})
 			continue
 		}
