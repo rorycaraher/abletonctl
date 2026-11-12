@@ -98,3 +98,12 @@ e.g. the `.als` was renamed or deleted.
 **Unlinked**:
 A Demo with no `__` that doesn't equal any Version slug: a plain human name
 with no recorded relationship.
+
+### Levels
+
+**Peak**:
+One excursion of an audio file over a level threshold (dBFS, -6 by
+default), as `peakfinder` reports it: crossings less than 100ms apart are
+one Peak, positioned at its loudest sample. Not one sample, and not a
+single waveform cycle.
+_Avoid_: Clip (Live's word for a region on a track), transient

@@ -24,6 +24,7 @@ func newRootCmd() *cobra.Command {
 		newFindOrphansCmd(),
 		newCollectCmd(),
 		newConvertDemosCmd(),
+		newPeakfinderCmd(),
 	)
 	return root
 }

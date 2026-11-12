@@ -78,6 +78,7 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 | `orphans.go` | `find-orphans <project-path> [--quarantine]` |
 | `collect.go` | `collect <.als>` / `collect --all <dir>` |
 | `demos.go` | `convert-demos [--dry-run]` |
+| `peakfinder.go` | `peakfinder <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
 | `demos_list.go` | `demos [--project <path>] [--remote]` (Demo to Version links) |
 | `style.go` | lipgloss styles (no command) |
 
@@ -169,6 +170,15 @@ files do only argument handling, orchestration, and output formatting:
   320k CBR mp3 via `ffmpeg` and deletes the original **only** after
   verifying the output exists and is non-empty (`Convert` then `os.Remove`
   in `ConvertAndCleanup`); a failed conversion never triggers a delete.
+
+- **`internal/peaks`** — backs `peakfinder`. Decodes uncompressed WAV
+  (PCM/float, incl. `WAVE_FORMAT_EXTENSIBLE`) and AIFF/AIFF-C (`NONE`,
+  `twos`, `sowt`, `fl32`, `fl64`) in pure Go, streaming, with no `ffmpeg`
+  dependency; the container is detected by magic bytes, and chunks may come
+  in any order. A Peak is one excursion over the threshold (max across
+  channels): crossings within `Hold` (100ms) merge into one, reported at
+  its loudest sample. `Bar` treats BPM as quarter notes per minute, as Live
+  does, so a 6/8 bar is three quarter notes.
 
 ## Conventions worth preserving when extending
 
