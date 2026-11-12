@@ -36,11 +36,11 @@ func TestUnknownCommand(t *testing.T) {
 
 func TestArgValidation(t *testing.T) {
 	for _, args := range [][]string{
-		{"find-orphans"},
-		{"find-orphans", "a", "b"},
-		{"collect"},
-		{"collect", "a", "b"},
-		{"projects", "extra"},
+		{"ableton", "find-orphans"},
+		{"ableton", "find-orphans", "a", "b"},
+		{"ableton", "collect"},
+		{"ableton", "collect", "a", "b"},
+		{"ableton", "projects", "extra"},
 		{"demos", "extra"},
 		{"config", "check", "extra"},
 	} {
@@ -57,11 +57,11 @@ func TestInterspersedFlags(t *testing.T) {
 		cmd, flag string
 	}{{"find-orphans", "quarantine"}, {"collect", "all"}} {
 		for _, args := range [][]string{
-			{tc.cmd, "dir", "--" + tc.flag},
-			{tc.cmd, "--" + tc.flag, "dir"},
+			{"ableton", tc.cmd, "dir", "--" + tc.flag},
+			{"ableton", tc.cmd, "--" + tc.flag, "dir"},
 		} {
 			root := newRootCmd()
-			sub, _, err := root.Find([]string{tc.cmd})
+			sub, _, err := root.Find([]string{"ableton", tc.cmd})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -248,5 +248,16 @@ func TestBackupUnknownDirectory(t *testing.T) {
 	_, err := run(t, "backup", "--config", cfg, "--dry-run", "nope")
 	if err == nil || !strings.Contains(err.Error(), "no [dirs.nope]") {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestAbletonCommandsOnlyUnderAbleton(t *testing.T) {
+	for _, name := range []string{"projects", "find-orphans", "collect"} {
+		if _, err := run(t, name); err == nil {
+			t.Errorf("%s: should not be a top-level command", name)
+		}
+		if sub, _, err := newRootCmd().Find([]string{"ableton", name}); err != nil || sub.Name() != name {
+			t.Errorf("ableton %s: not found (%v)", name, err)
+		}
 	}
 }

@@ -85,7 +85,7 @@ no extra subfolder.
 ```sh
 # List every project discovered in the projects Directory, with how many .als
 # Versions it has.
-abletonctl projects
+abletonctl ableton projects
 
 # List every Demo in the demos Directory. A .wav and .mp3 with the same name are
 # one Demo.
@@ -132,13 +132,13 @@ abletonctl backup --quiet
 abletonctl backup --yes
 
 # Find samples that no top-level .als in a project references anymore.
-abletonctl find-orphans ~/Music/Projects/Song
+abletonctl ableton find-orphans ~/Music/Projects/Song
 
 # Move the ones it's confident about into Song/_unreferenced/, preserving
 # their path under Samples/. Never deletes; never touches files it's only
 # "uncertain" about (matched by filename but not by path - reopen the
 # project and check those by hand).
-abletonctl find-orphans ~/Music/Projects/Song --quarantine
+abletonctl ableton find-orphans ~/Music/Projects/Song --quarantine
 ```
 
 `find-orphans` only looks at top-level `.als` files - Ableton's
@@ -152,11 +152,11 @@ auto-generated `Backup/` folder is ignored, since counting old backups as
 # Never overwrites the input - always writes a new numbered .als alongside it
 # (Song.als -> Song-01.als). Pack content, Ableton's own bundled content, and
 # anything already inside the project are left alone.
-abletonctl collect ~/Music/Projects/Song/Song.als
+abletonctl ableton collect ~/Music/Projects/Song/Song.als
 
 # Same, for every top-level .als in a directory. Each file is independent -
 # one failing doesn't stop the rest.
-abletonctl collect --all ~/Music/Projects/Song
+abletonctl ableton collect --all ~/Music/Projects/Song
 ```
 
 ```sh
@@ -175,7 +175,7 @@ source <(abletonctl completion zsh)
 ```
 
 It completes command names, Directory names for `backup`, `--config` files (`*.toml`)
-and project directories for `find-orphans`. Run `abletonctl completion --help`
+and project directories for `ableton find-orphans`. Run `abletonctl completion --help`
 for the other shells.
 
 ## Development

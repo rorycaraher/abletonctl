@@ -73,10 +73,11 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 | File | Command(s) |
 |---|---|
 | `backup.go` | `backup [dir...] [--dry-run] [--quiet] [--yes]` (every copy runs; summary at the end) |
-| `projects.go` | `projects` (lists projects with their `.als` counts) |
+| `ableton.go` | `ableton` (groups the Ableton-only commands below) |
+| `projects.go` | `ableton projects` (lists projects with their `.als` counts) |
 | `config.go` | `config check` |
-| `orphans.go` | `find-orphans <project-path> [--quarantine]` |
-| `collect.go` | `collect <.als>` / `collect --all <dir>` |
+| `orphans.go` | `ableton find-orphans <project-path> [--quarantine]` |
+| `collect.go` | `ableton collect <.als>` / `ableton collect --all <dir>` |
 | `demos.go` | `convert-demos [--dry-run]` |
 | `peaks.go` | `find-peaks <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
 | `demos_list.go` | `demos [--remote]` (lists Demos and their Location: local and each Remote) |
@@ -88,6 +89,9 @@ Conventions for the command layer:
   `RunE` rather than printing and exiting.
 - `--config` is added only to commands that read the config file, via
   `addConfigFlag`. `find-orphans` and `collect` take explicit paths instead.
+- Commands that only make sense for Ableton (they read `.als` files or
+  Live's Project layout) go under `ableton`; everything else is top-level
+  and DAW-agnostic.
 - Long flags are `--double-dash` only (pflag); flags may appear before or
   after positional arguments.
 - Shell completion (`abletonctl completion zsh|bash|fish|powershell`) is
