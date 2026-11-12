@@ -4,7 +4,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/rorycaraher/abletonctl/internal/configcheck"
-	"github.com/rorycaraher/abletonctl/internal/demolist"
 )
 
 // Styles degrade to plain text automatically when stdout isn't a terminal
@@ -31,19 +30,10 @@ func levelLabel(l configcheck.Level) string {
 	}
 }
 
-var (
-	localStyle  = lipgloss.NewStyle().Width(6)
-	remoteStyle = lipgloss.NewStyle().Width(6).Faint(true)
-	bothStyle   = lipgloss.NewStyle().Width(6).Foreground(lipgloss.Color("6"))
-)
-
-func locationLabel(l demolist.Location) string {
-	switch l {
-	case demolist.Both:
-		return bothStyle.Render(string(l))
-	case demolist.Remote:
-		return remoteStyle.Render(string(l))
-	default:
-		return localStyle.Render(string(l))
+// placeStyle styles a Demo's Location cell: present, or missing ("·").
+func placeStyle(present bool) lipgloss.Style {
+	if present {
+		return lipgloss.NewStyle()
 	}
+	return dimStyle
 }

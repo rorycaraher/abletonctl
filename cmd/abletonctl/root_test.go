@@ -147,36 +147,37 @@ func TestProjectLines(t *testing.T) {
 
 func TestWriteDemos(t *testing.T) {
 	demos := []demolist.Demo{
-		{Name: "song-01__x", Formats: []string{"mp3", "wav"}, Location: demolist.Both},
-		{Name: "Untitled", Dir: "sub", Formats: []string{"wav"}, Location: demolist.Local},
-		{Name: "gone__x", Formats: []string{"mp3"}, Location: demolist.Remote},
+		{Name: "song-01__x", Formats: []string{"mp3", "wav"}, Location: []string{"local", "r2:b/demos", "gdrive:demos"}},
+		{Name: "Untitled", Dir: "sub", Formats: []string{"wav"}, Location: []string{"local"}},
+		{Name: "gone__x", Formats: []string{"mp3"}, Location: []string{"r2:b/demos"}},
 	}
 
 	var local bytes.Buffer
-	writeDemos(&local, demos, false)
-	for _, want := range []string{
-		"  song-01__x [mp3,wav]\n",
-		"  sub/Untitled [wav]\n",
-		"3 demos\n",
-	} {
-		if !strings.Contains(local.String(), want) {
-			t.Errorf("missing %q in:\n%s", want, local.String())
-		}
-	}
-	if strings.Contains(local.String(), "remote") {
-		t.Errorf("no location info without --remote:\n%s", local.String())
+	writeDemos(&local, demos, nil)
+	want := "  song-01__x [mp3,wav]\n  sub/Untitled [wav]\n  gone__x [mp3]\n\n3 demos\n"
+	if local.String() != want {
+		t.Errorf("got:\n%s\nwant:\n%s", local.String(), want)
 	}
 
 	var remote bytes.Buffer
-	writeDemos(&remote, demos, true)
-	for _, want := range []string{
-		"  both   song-01__x [mp3,wav]",
-		"  remote gone__x [mp3]",
-		"1 local, 1 remote, 1 both (by name)",
-	} {
-		if !strings.Contains(remote.String(), want) {
-			t.Errorf("missing %q in:\n%s", want, remote.String())
-		}
+	writeDemos(&remote, demos, []string{"r2:b/demos", "gdrive:demos"})
+	want = "" +
+		"  local r2 gdrive song-01__x [mp3,wav]\n" +
+		"  local ·  ·      sub/Untitled [wav]\n" +
+		"  ·     r2 ·      gone__x [mp3]\n" +
+		"\n3 demos\n" +
+		"2 local, 2 r2, 1 gdrive (by name)\n" +
+		"2 not on every remote\n"
+	if remote.String() != want {
+		t.Errorf("got:\n%s\nwant:\n%s", remote.String(), want)
+	}
+}
+
+func TestRemoteLabels(t *testing.T) {
+	got := remoteLabels([]string{"r2:a/demos", "gdrive:demos", "r2:b/demos"})
+	want := []string{"r2:a/demos", "gdrive", "r2:b/demos"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v want %v", got, want)
 	}
 }
 

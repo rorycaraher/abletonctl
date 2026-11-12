@@ -91,9 +91,11 @@ abletonctl projects
 # one Demo.
 abletonctl demos
 
-# Include the Demos on the demos Directory's remote too (a read-only rclone listing, so it
-# needs rclone and network access). Each Demo is tagged local, remote or
-# both - decided by name only, so "both" doesn't mean the files are identical.
+# Include the Demos on each of the demos Directory's remotes too (read-only
+# rclone listings, so it needs rclone and network access). Each Demo shows
+# where it was found - local, and each remote by its rclone name - with "·"
+# where it's missing, so a Demo that didn't make it to one remote stands out.
+# Decided by name only: being in two places doesn't mean the files match.
 abletonctl demos --remote
 
 # Convert every aiff/wav in the demos Directory to a 320k mp3, then permanently

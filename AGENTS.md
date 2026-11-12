@@ -79,7 +79,7 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 | `collect.go` | `collect <.als>` / `collect --all <dir>` |
 | `demos.go` | `convert-demos [--dry-run]` |
 | `peaks.go` | `find-peaks <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
-| `demos_list.go` | `demos [--remote]` (lists Demos and their Location) |
+| `demos_list.go` | `demos [--remote]` (lists Demos and their Location: local and each Remote) |
 | `style.go` | lipgloss styles (no command) |
 
 Conventions for the command layer:
@@ -157,8 +157,9 @@ files do only argument handling, orchestration, and output formatting:
 - **`internal/demolist`** — finds Demos by name. `GroupPaths` groups
   relative file paths into Demos (audio `.wav .aiff .aif .mp3` only; a
   `.wav`/`.mp3` pair is one Demo; `.asd` ignored), `ListDemos` feeds it from
-  a local walk, and `Merge` combines local and remote Demos, tagging each
-  `Location` by name only, never by content. The remote listing itself
+  a local walk, and `Merge` combines the lists from any number of places
+  (local, then each Remote), so a Demo's `Location` is every place it was
+  found — by name only, never by content. The remote listing itself
   comes from `backup.ListRemote`, so this package never shells out.
   Demo-to-Version linking was removed for now; see
   `docs/adr/0003-demos-link-to-versions-by-filename.md` (parked).

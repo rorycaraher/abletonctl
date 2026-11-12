@@ -32,9 +32,9 @@ func TestListDemos(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Demo{
-		{Name: "song-01__a", Dir: "", Formats: []string{"mp3", "wav"}, Location: Local},
-		{Name: "other", Dir: "sub", Formats: []string{"aif"}, Location: Local},
-		{Name: "song-01__a", Dir: "sub", Formats: []string{"wav"}, Location: Local},
+		{Name: "song-01__a", Dir: "", Formats: []string{"mp3", "wav"}, Location: []string{Local}},
+		{Name: "other", Dir: "sub", Formats: []string{"aif"}, Location: []string{Local}},
+		{Name: "song-01__a", Dir: "sub", Formats: []string{"wav"}, Location: []string{Local}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got  %+v\nwant %+v", got, want)
@@ -45,11 +45,11 @@ func TestGroupPaths(t *testing.T) {
 	got := GroupPaths([]string{
 		"a.mp3", "a.wav", "a.wav.asd", "notes.txt",
 		"sub/a.mp3", "sub/deep/b.AIFF", "README",
-	}, Remote)
+	}, "r2:demos")
 	want := []Demo{
-		{Name: "a", Dir: "", Formats: []string{"mp3", "wav"}, Location: Remote},
-		{Name: "a", Dir: "sub", Formats: []string{"mp3"}, Location: Remote},
-		{Name: "b", Dir: "sub/deep", Formats: []string{"aiff"}, Location: Remote},
+		{Name: "a", Dir: "", Formats: []string{"mp3", "wav"}, Location: []string{"r2:demos"}},
+		{Name: "a", Dir: "sub", Formats: []string{"mp3"}, Location: []string{"r2:demos"}},
+		{Name: "b", Dir: "sub/deep", Formats: []string{"aiff"}, Location: []string{"r2:demos"}},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got  %+v\nwant %+v", got, want)
@@ -57,16 +57,17 @@ func TestGroupPaths(t *testing.T) {
 }
 
 func TestMerge(t *testing.T) {
-	local := GroupPaths([]string{"both.wav", "only-local.wav", "sub/x.wav", "x.wav"}, Local)
-	remote := GroupPaths([]string{"both.mp3", "only-remote.mp3", "sub/x.mp3", "sub/y.mp3"}, Remote)
-	got := Merge(local, remote)
+	local := GroupPaths([]string{"everywhere.wav", "only-local.wav", "sub/x.wav", "x.wav"}, Local)
+	r2 := GroupPaths([]string{"everywhere.mp3", "only-r2.mp3", "sub/x.mp3", "sub/y.mp3"}, "r2:demos")
+	gdrive := GroupPaths([]string{"everywhere.mp3", "sub/y.mp3"}, "gdrive:demos")
+	got := Merge(local, r2, gdrive)
 	want := []Demo{
-		{Name: "both", Formats: []string{"wav", "mp3"}, Location: Both},
-		{Name: "only-local", Formats: []string{"wav"}, Location: Local},
-		{Name: "only-remote", Formats: []string{"mp3"}, Location: Remote},
-		{Name: "x", Formats: []string{"wav"}, Location: Local}, // root x, distinct from sub/x
-		{Name: "x", Dir: "sub", Formats: []string{"wav", "mp3"}, Location: Both},
-		{Name: "y", Dir: "sub", Formats: []string{"mp3"}, Location: Remote},
+		{Name: "everywhere", Formats: []string{"wav", "mp3"}, Location: []string{Local, "r2:demos", "gdrive:demos"}},
+		{Name: "only-local", Formats: []string{"wav"}, Location: []string{Local}},
+		{Name: "only-r2", Formats: []string{"mp3"}, Location: []string{"r2:demos"}},
+		{Name: "x", Formats: []string{"wav"}, Location: []string{Local}}, // root x, distinct from sub/x
+		{Name: "x", Dir: "sub", Formats: []string{"wav", "mp3"}, Location: []string{Local, "r2:demos"}},
+		{Name: "y", Dir: "sub", Formats: []string{"mp3"}, Location: []string{"r2:demos", "gdrive:demos"}},
 	}
 	// Order is by directory then name; compare ignoring format order.
 	if len(got) != len(want) {
@@ -79,6 +80,9 @@ func TestMerge(t *testing.T) {
 		if !reflect.DeepEqual(g, w) {
 			t.Errorf("[%d] got %+v want %+v", i, g, w)
 		}
+	}
+	if !got[0].In("gdrive:demos") || got[1].In("r2:demos") {
+		t.Errorf("In: %+v", got[:2])
 	}
 }
 

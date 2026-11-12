@@ -1,5 +1,5 @@
 // Package demolist finds Demos (rendered audio in the Demos directory) and
-// where each one is found: locally, on a Remote, or both. A Demo is
+// where each one is found: locally and on which Remotes. A Demo is
 // identified by its relative directory and name without extension, so a
 // .wav and its .mp3 are one Demo.
 package demolist
@@ -13,32 +13,34 @@ import (
 	"strings"
 )
 
-// Location is where a Demo is found. It is decided by name only, never by
-// comparing content, so Both does not mean the two files are identical.
-type Location string
-
-const (
-	Local  Location = "local"
-	Remote Location = "remote"
-	Both   Location = "both"
-)
+// Local is the place name for the Demos directory itself; a Remote's place
+// name is its rclone destination.
+const Local = "local"
 
 // Demo is one rendered piece of audio, grouped by directory and name so a
 // .wav and its .mp3 are a single Demo.
 type Demo struct {
-	Name     string   // file name without extension
-	Dir      string   // directory relative to the demos root, slash-separated; "" at the root
-	Formats  []string // lowercase extensions without the dot, sorted
-	Location Location
+	Name    string   // file name without extension
+	Dir     string   // directory relative to the demos root, slash-separated; "" at the root
+	Formats []string // lowercase extensions without the dot, sorted
+	// Location is the places the Demo was found, in the order they were
+	// merged. Decided by name only, never by comparing content, so being
+	// found in two places does not mean the files are identical.
+	Location []string
+}
+
+// In reports whether the Demo was found at place.
+func (d Demo) In(place string) bool {
+	return contains(d.Location, place)
 }
 
 var audioExts = map[string]bool{".wav": true, ".aiff": true, ".aif": true, ".mp3": true}
 
 // GroupPaths groups file paths (relative to a demos root, slash-separated)
-// into Demos by directory and name, tagging each with loc. Non-audio files
+// into Demos by directory and name, found at place. Non-audio files
 // (e.g. Ableton's .asd analysis files) are ignored. Results are sorted by
 // directory, then name.
-func GroupPaths(paths []string, loc Location) []Demo {
+func GroupPaths(paths []string, place string) []Demo {
 	byKey := map[string]*Demo{}
 	for _, p := range paths {
 		ext := strings.ToLower(path.Ext(p))
@@ -51,7 +53,7 @@ func GroupPaths(paths []string, loc Location) []Demo {
 		key := dir + "\x00" + name
 		d, ok := byKey[key]
 		if !ok {
-			d = &Demo{Name: name, Dir: dir, Location: loc}
+			d = &Demo{Name: name, Dir: dir, Location: []string{place}}
 			byKey[key] = d
 		}
 		d.Formats = append(d.Formats, strings.TrimPrefix(ext, "."))
@@ -98,32 +100,35 @@ func ListDemos(dir string) ([]Demo, error) {
 	return GroupPaths(paths, Local), nil
 }
 
-// Merge combines local and remote Demos into one list. A Demo is the same
-// on both sides when its relative directory and name match (extensions may
-// differ: a local .wav and a remote .mp3 are one Demo). Formats are unioned.
-func Merge(local, remote []Demo) []Demo {
+// Merge combines Demo lists from several places into one. A Demo is the
+// same in two places when its relative directory and name match
+// (extensions may differ: a local .wav and a remote .mp3 are one Demo).
+// Formats and Locations are unioned, Locations in argument order.
+func Merge(lists ...[]Demo) []Demo {
 	byKey := map[string]*Demo{}
-	add := func(src []Demo, loc Location) {
-		for _, d := range src {
+	for _, list := range lists {
+		for _, d := range list {
 			key := d.Dir + "\x00" + d.Name
 			m, ok := byKey[key]
 			if !ok {
 				c := d
 				c.Formats = append([]string(nil), d.Formats...)
-				c.Location = loc
+				c.Location = append([]string(nil), d.Location...)
 				byKey[key] = &c
 				continue
 			}
-			m.Location = Both
 			for _, f := range d.Formats {
 				if !contains(m.Formats, f) {
 					m.Formats = append(m.Formats, f)
 				}
 			}
+			for _, l := range d.Location {
+				if !contains(m.Location, l) {
+					m.Location = append(m.Location, l)
+				}
+			}
 		}
 	}
-	add(local, Local)
-	add(remote, Remote)
 	return sortedDemos(byKey)
 }
 
