@@ -17,6 +17,9 @@ var (
 	boldStyle = lipgloss.NewStyle().Bold(true)
 )
 
+func okLabel() string   { return okStyle.Render("ok") }
+func failLabel() string { return failStyle.Render("FAIL") }
+
 func levelLabel(l configcheck.Level) string {
 	switch l {
 	case configcheck.OK:

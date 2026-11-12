@@ -69,7 +69,7 @@ func Run(j Job, dryRun, quiet bool, stdout, stderr io.Writer) error {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("rclone copy %s -> %s: %w", j.LocalDir, j.RemoteDir, err)
+		return fmt.Errorf("rclone copy: %w", err)
 	}
 	return nil
 }

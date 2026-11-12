@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/rorycaraher/abletonctl/internal/backup"
 	"github.com/rorycaraher/abletonctl/internal/demolist"
 	"github.com/rorycaraher/abletonctl/internal/discovery"
 )
@@ -39,6 +41,7 @@ func TestArgValidation(t *testing.T) {
 		{"collect"},
 		{"collect", "a", "b"},
 		{"projects", "extra"},
+		{"demos", "extra"},
 		{"config", "check", "extra"},
 	} {
 		if _, err := run(t, args...); err == nil {
@@ -192,5 +195,57 @@ func TestDemosRemoteWithoutRemotes(t *testing.T) {
 func TestDemosArgValidation(t *testing.T) {
 	if _, err := run(t, "demos", "extra"); err == nil {
 		t.Error("want arg error")
+	}
+}
+
+func TestWriteBackupSummary(t *testing.T) {
+	results := []backupResult{
+		{job: backup.Job{Dir: "projects", RemoteDir: "r2:b/projects"}},
+		{job: backup.Job{Dir: "projects", RemoteDir: "nas:music/projects"}, err: errors.New("exit status 1")},
+		{job: backup.Job{Dir: "demos", RemoteDir: "gdrive:demos"}},
+	}
+	var out bytes.Buffer
+	err := writeBackupSummary(&out, results)
+	if err == nil || err.Error() != "1 of 3 copies failed" {
+		t.Fatalf("err = %v", err)
+	}
+	for _, want := range []string{
+		"  ok    [projects] -> r2:b/projects\n",
+		"  FAIL  [projects] -> nas:music/projects: exit status 1\n",
+		"  ok    [demos] -> gdrive:demos\n",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q in:\n%s", want, out.String())
+		}
+	}
+	if err := writeBackupSummary(&bytes.Buffer{}, results[:1]); err != nil {
+		t.Fatalf("all ok: %v", err)
+	}
+}
+
+func TestBackupCompletesDirectoryNames(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfg, []byte("[dirs.projects]\npath = \"/p\"\n[dirs.demos]\npath = \"/d\"\n[dirs.user-library]\npath = \"/u\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := run(t, "__complete", "backup", "--config", cfg, "demos", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(out, "projects\nuser-library\n:4\n") {
+		t.Fatalf("completion = %q", out)
+	}
+}
+
+func TestBackupUnknownDirectory(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfg, []byte("[dirs.demos]\npath = \"/d\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := run(t, "backup", "--config", cfg, "--dry-run", "nope")
+	if err == nil || !strings.Contains(err.Error(), "no [dirs.nope]") {
+		t.Fatalf("got %v", err)
 	}
 }
