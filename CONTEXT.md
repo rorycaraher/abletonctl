@@ -1,21 +1,35 @@
-# abletonctl
+# studioctl
 
-A CLI for managing a single Ableton Live production workspace: discovering
-projects, finding orphaned samples, collecting external file references into
-a project, converting rendered demos to mp3, and backing up projects/demos to
-a remote.
+A personal CLI for a solo music producer's files on one computer: backing up
+any number of Directories to rclone Remotes, listing and converting demos,
+and finding peaks in rendered audio. Ableton-specific tools — discovering
+Projects, finding orphaned samples, collecting external file references into
+a Project — live under `studioctl ableton`.
 
 ## Language
 
+**Directory**:
+A named local directory the tool knows about, with zero or more Remotes.
+There can be any number of them; most are only backed up. Two names are
+special: `projects` (the Projects directory) and `demos` (the Demos
+directory), so there is at most one of each.
+_Avoid_: Backup target, role, workspace
+
+**Remote**:
+An exact rclone destination a Directory is copied to. The Directory's
+contents land directly in it; no subfolder is added. A Directory may have
+several Remotes, or none.
+_Avoid_: Backup, mirror
+
 **Projects directory**:
-The directory containing every Ableton Project the tool manages. Configured
-once, directly (no registry, no name). Projects are its direct children —
-there is no intermediate grouping directory.
+The Directory named `projects`: it holds every Ableton Project the tool
+manages. Projects are its direct children — there is no intermediate
+grouping directory.
 _Avoid_: Artist directory, artist root, artist namespace
 
 **Demos directory**:
-The directory WIP demo bounces land in. Configured independently of the
-Projects directory — it is not assumed to be a subdirectory of it, since
+The Directory named `demos`, where WIP demo bounces land. Independent of
+the Projects directory — it is not assumed to be a subdirectory of it, since
 demo bounces may live somewhere else entirely (a synced folder, a separate
 drive).
 _Avoid_: Demos role, demos glob
@@ -28,13 +42,6 @@ auto-generated `Backup/` folder is never scanned. A Project's name is its
 folder name without the ` Project` suffix Live appends (`installations
 Project` is `installations`); the suffix is optional wherever a name is
 accepted.
-
-**Backup target**:
-One of the two things `backup` can copy to a remote: the Projects directory
-or the Demos directory. Each target has its own remote destination. A remote
-is the exact destination for its target's contents — no implicit subfolder
-is added.
-_Avoid_: Role, backup role
 
 **Orphan**:
 A file under a Project's `Samples/` directory that no top-level `.als` in
@@ -52,52 +59,23 @@ never auto-quarantined; requires opening the project and checking by hand.
 
 **Version**:
 A top-level `.als` file in a Project: one saved iteration of it. A Project
-has one or more Versions. A Demo links to a Version, not to the Project
-folder; the Project is the Version's parent folder.
+has one or more Versions.
 _Avoid_: Live Set, set, revision
-
-**Version slug**:
-A Version's file name without `.als` (`43-missed-calls-RESHAPE-03`). Not
-unique across Projects, and one slug may be a prefix of another
-(`bell-04`, `bell-04-2026`). A Version may carry its own descriptor
-(`bell-04__alt.als`); Demos link to the part before the first `__`.
-_Avoid_: Version stem (a "stem" is a rendered audio stem), project name,
-version name
 
 **Demo**:
 A rendered piece of audio in the Demos directory, identified by its name
 without extension; a `.wav` and `.mp3` with the same name are one Demo.
 Ableton's `.asd` analysis files are not Demos. A Demo is found locally, on
-the remote, or both (see Location).
+some of the Demos directory's Remotes, or both (see Location).
 _Avoid_: Render, bounce, track
 
 **Location**:
-Where a Demo is found: `local` (Demos directory), `remote` (the Demos
-remote), or `both`. Decided by name (relative directory and name without
-extension) only, never by comparing content, so `both` does not mean the two
-files are identical.
+The set of places a Demo is found: the Demos directory, and each of its
+Remotes that has it. Decided by name (relative directory and name without
+extension) only, never by comparing content, so being found in two places
+does not mean the files are identical. A Demo missing from some Remotes is
+a backup gap.
 _Avoid_: Synced, backed up, archived
-
-**Demo name**:
-A Demo's name, either exactly a Version slug, or a Version slug and a
-human-chosen descriptor joined by `__`: `bell-04-2026-02__soft-pad`. The
-descriptor is free text; the slug is what links the Demo to a Version.
-_Avoid_: Demo title
-
-**Linked**:
-A Demo whose Version slug matches exactly one Version.
-
-**Ambiguous**:
-A Demo whose Version slug matches Versions in more than one Project
-(e.g. `Untitled`). It is linked to none of them.
-
-**Dangling**:
-A Demo whose name contains `__` but whose Version slug matches no Version,
-e.g. the `.als` was renamed or deleted.
-
-**Unlinked**:
-A Demo with no `__` that doesn't equal any Version slug: a plain human name
-with no recorded relationship.
 
 ### Levels
 
