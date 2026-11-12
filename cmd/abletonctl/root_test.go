@@ -11,7 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/demolink"
+	"github.com/rorycaraher/abletonctl/internal/demolist"
 	"github.com/rorycaraher/abletonctl/internal/discovery"
 )
 
@@ -130,44 +130,31 @@ func TestProjectLines(t *testing.T) {
 		{Name: "longer name", Path: "/p/l", AlsFiles: make([]string, 12)},
 		{Name: "mid", Path: "/p/m", AlsFiles: make([]string, 1)},
 	}
-	got := projectLines(ps, nil)
+	got := projectLines(ps)
 	want := []string{
 		"  - a             2 .als",
 		"  - longer name  12 .als",
 		"  - mid           1 .als",
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Errorf("no demos:\n%q\nwant\n%q", got, want)
+		t.Errorf("got\n%q\nwant\n%q", got, want)
 	}
 
-	got = projectLines(ps, map[string]int{"/p/a": 1, "/p/l": 10, "/p/m": 0})
-	want = []string{
-		"  - a             2 .als   1 demo",
-		"  - longer name  12 .als  10 demos",
-		"  - mid           1 .als   0 demos",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("with demos:\n%q\nwant\n%q", got, want)
-	}
 }
 
-func TestWriteDemoLinks(t *testing.T) {
-	links := []demolink.Link{
-		{Demo: demolink.Demo{Name: "song-01__x", Formats: []string{"mp3", "wav"}, Location: demolink.Both},
-			Status: demolink.Linked, Version: &demolink.Version{Slug: "song-01", ProjectName: "song Project"}},
-		{Demo: demolink.Demo{Name: "Untitled", Dir: "sub", Formats: []string{"wav"}, Location: demolink.Local},
-			Status: demolink.Ambiguous, Candidates: []demolink.Version{{ProjectName: "a Project"}, {ProjectName: "b Project"}}},
-		{Demo: demolink.Demo{Name: "gone__x", Formats: []string{"mp3"}, Location: demolink.Remote}, Status: demolink.Dangling},
-		{Demo: demolink.Demo{Name: "plain", Formats: []string{"wav"}, Location: demolink.Local}, Status: demolink.Unlinked},
+func TestWriteDemos(t *testing.T) {
+	demos := []demolist.Demo{
+		{Name: "song-01__x", Formats: []string{"mp3", "wav"}, Location: demolist.Both},
+		{Name: "Untitled", Dir: "sub", Formats: []string{"wav"}, Location: demolist.Local},
+		{Name: "gone__x", Formats: []string{"mp3"}, Location: demolist.Remote},
 	}
 
 	var local bytes.Buffer
-	writeDemoLinks(&local, links, false)
+	writeDemos(&local, demos, false)
 	for _, want := range []string{
-		"song-01__x [mp3,wav]  -> song Project / song-01.als",
-		"sub/Untitled [wav]  -> matches 2 Projects: a Project, b Project",
-		"dangling  gone__x",
-		"4 demos: 1 linked, 1 ambiguous, 1 dangling, 1 unlinked",
+		"  song-01__x [mp3,wav]\n",
+		"  sub/Untitled [wav]\n",
+		"3 demos\n",
 	} {
 		if !strings.Contains(local.String(), want) {
 			t.Errorf("missing %q in:\n%s", want, local.String())
@@ -178,11 +165,11 @@ func TestWriteDemoLinks(t *testing.T) {
 	}
 
 	var remote bytes.Buffer
-	writeDemoLinks(&remote, links, true)
+	writeDemos(&remote, demos, true)
 	for _, want := range []string{
-		"linked    both   song-01__x [mp3,wav]",
-		"dangling  remote gone__x [mp3]",
-		"2 local, 1 remote, 1 both (by name)",
+		"  both   song-01__x [mp3,wav]",
+		"  remote gone__x [mp3]",
+		"1 local, 1 remote, 1 both (by name)",
 	} {
 		if !strings.Contains(remote.String(), want) {
 			t.Errorf("missing %q in:\n%s", want, remote.String())
@@ -190,35 +177,15 @@ func TestWriteDemoLinks(t *testing.T) {
 	}
 }
 
-func TestRemoteFlagAndMissingRemote(t *testing.T) {
-	for _, name := range []string{"demos", "projects"} {
-		sub, _, err := newRootCmd().Find([]string{name})
-		if err != nil || sub.Flags().Lookup("remote") == nil {
-			t.Errorf("%s: missing --remote flag (%v)", name, err)
-		}
-	}
-
+func TestDemosRemoteWithoutDemosRemote(t *testing.T) {
 	dir := t.TempDir()
-	proj := filepath.Join(dir, "projects", "Song Project")
-	if err := os.MkdirAll(proj, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(proj, "song-01.als"), nil, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	demosDir := filepath.Join(dir, "demos")
-	if err := os.MkdirAll(demosDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
 	cfg := filepath.Join(dir, "config.toml")
-	if err := os.WriteFile(cfg, []byte("projects_dir = \""+filepath.Join(dir, "projects")+"\"\ndemos_dir = \""+demosDir+"\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(cfg, []byte("demos_dir = \""+dir+"\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"demos", "projects"} {
-		_, err := run(t, name, "--remote", "--config", cfg)
-		if err == nil || !strings.Contains(err.Error(), "demos_remote is not configured") {
-			t.Errorf("%s --remote without demos_remote: got %v", name, err)
-		}
+	_, err := run(t, "demos", "--remote", "--config", cfg)
+	if err == nil || !strings.Contains(err.Error(), "demos_remote is not configured") {
+		t.Errorf("demos --remote without demos_remote: got %v", err)
 	}
 }
 

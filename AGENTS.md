@@ -73,13 +73,13 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 | File | Command(s) |
 |---|---|
 | `backup.go` | `backup [--target projects\|demos\|ableton] [--dry-run] [--quiet] [--yes]` |
-| `projects.go` | `projects [--remote]` (lists projects with `.als` and linked-Demo counts) |
+| `projects.go` | `projects` (lists projects with their `.als` counts) |
 | `config.go` | `config check` |
 | `orphans.go` | `find-orphans <project-path> [--quarantine]` |
 | `collect.go` | `collect <.als>` / `collect --all <dir>` |
 | `demos.go` | `convert-demos [--dry-run]` |
 | `peaks.go` | `find-peaks <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
-| `demos_list.go` | `demos [--project <path>] [--remote]` (Demo to Version links) |
+| `demos_list.go` | `demos [--remote]` (lists Demos and their Location) |
 | `style.go` | lipgloss styles (no command) |
 
 Conventions for the command layer:
@@ -152,19 +152,14 @@ files do only argument handling, orchestration, and output formatting:
   (`LivePackId` set) and Ableton's own bundled content (path contains
   `.app/Contents/`) are always left alone.
 
-- **`internal/demolink`** — relates Demos to Versions by filename, purely
-  from names (nothing stored). `Parse` splits a Demo name on the first `__`;
-  `GroupPaths` groups relative file paths into Demos (audio `.wav .aiff .aif
-  .mp3` only; a `.wav`/`.mp3` pair is one Demo; `.asd` ignored), `ListDemos`
-  feeds it from a local walk, and `Merge` combines local and remote Demos,
-  tagging each `Location` (`Local`/`Remote`/`Both`, by name only, never by
-  content). The remote listing itself comes from `backup.ListRemote`, so this
-  package never shells out. `Resolve`
-  indexes every Project's `.als` slugs (cut at the first `__`, so
-  `song-03__alt.als` is indexed as `song-03`) and classifies each Demo as `Linked`,
-  `Ambiguous` (slug in 2+ Projects), `Dangling` (has `__`, no match) or
-  `Unlinked`. Matching is exact and case-sensitive, never prefix-based.
-  See `docs/adr/0003-demos-link-to-versions-by-filename.md`.
+- **`internal/demolist`** — finds Demos by name. `GroupPaths` groups
+  relative file paths into Demos (audio `.wav .aiff .aif .mp3` only; a
+  `.wav`/`.mp3` pair is one Demo; `.asd` ignored), `ListDemos` feeds it from
+  a local walk, and `Merge` combines local and remote Demos, tagging each
+  `Location` by name only, never by content. The remote listing itself
+  comes from `backup.ListRemote`, so this package never shells out.
+  Demo-to-Version linking was removed for now; see
+  `docs/adr/0003-demos-link-to-versions-by-filename.md` (parked).
 
 - **`internal/demos`** — converts `aiff`/`wav` under the demos directory to
   320k CBR mp3 via `ffmpeg` and deletes the original **only** after
