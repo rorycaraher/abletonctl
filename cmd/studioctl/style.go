@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/rorycaraher/abletonctl/internal/configcheck"
+	"github.com/rorycaraher/studioctl/internal/configcheck"
 )
 
 // Styles degrade to plain text automatically when stdout isn't a terminal

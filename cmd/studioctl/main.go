@@ -1,4 +1,4 @@
-// Command abletonctl manages a single Ableton Live production workspace:
+// Command studioctl manages a single Ableton Live production workspace:
 // discovering projects, finding unreferenced samples, collecting external
 // file references into a project, converting rendered demos to mp3, and
 // backing up the projects and demos directories to rclone remotes.
@@ -14,7 +14,7 @@ var version = "dev"
 
 func main() {
 	if err := newRootCmd().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "abletonctl:", err)
+		fmt.Fprintln(os.Stderr, "studioctl:", err)
 		os.Exit(1)
 	}
 }

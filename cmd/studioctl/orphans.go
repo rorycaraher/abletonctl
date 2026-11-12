@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/discovery"
-	"github.com/rorycaraher/abletonctl/internal/samples"
+	"github.com/rorycaraher/studioctl/internal/discovery"
+	"github.com/rorycaraher/studioctl/internal/samples"
 )
 
 func newFindOrphansCmd() *cobra.Command {

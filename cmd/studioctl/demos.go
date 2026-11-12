@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/config"
-	"github.com/rorycaraher/abletonctl/internal/demos"
+	"github.com/rorycaraher/studioctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/demos"
 )
 
 func newConvertDemosCmd() *cobra.Command {

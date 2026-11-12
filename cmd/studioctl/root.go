@@ -5,15 +5,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/config"
 )
 
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
-		Use:     "abletonctl",
-		Short:   "Manage an Ableton Live production workspace",
+		Use:     "studioctl",
+		Short:   "Back up, list and check a music producer's files",
 		Version: version,
-		// main() prints errors itself, in the "abletonctl: <err>" format;
+		// main() prints errors itself, in the "studioctl: <err>" format;
 		// usage on every runtime error is just noise.
 		SilenceUsage:  true,
 		SilenceErrors: true,

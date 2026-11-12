@@ -1,4 +1,4 @@
-/abletonctl
+/studioctl
 .claude
 # Added by goreleaser init:
 dist/

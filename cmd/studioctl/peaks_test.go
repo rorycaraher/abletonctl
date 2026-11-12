@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rorycaraher/abletonctl/internal/peaks"
+	"github.com/rorycaraher/studioctl/internal/peaks"
 )
 
 func TestFindPeaksFlagErrors(t *testing.T) {

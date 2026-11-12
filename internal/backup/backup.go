@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/rorycaraher/abletonctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/config"
 )
 
 // Job is one local-directory-to-remote rclone copy. RemoteDir is the exact

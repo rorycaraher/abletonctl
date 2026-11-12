@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/collect"
+	"github.com/rorycaraher/studioctl/internal/collect"
 )
 
 func newCollectCmd() *cobra.Command {

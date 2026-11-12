@@ -6,8 +6,8 @@ gitleaks = "latest"
 actionlint = "latest"
 
 [tasks.build]
-description = "Build the abletonctl binary"
-run = "go build -o abletonctl ./cmd/abletonctl"
+description = "Build the studioctl binary"
+run = "go build -o studioctl ./cmd/studioctl"
 
 [tasks.fmt]
 description = "Format Go code"

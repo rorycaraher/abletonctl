@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/rorycaraher/abletonctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/config"
 )
 
 func fullConfig() *config.Config {

@@ -1,4 +1,4 @@
-module github.com/rorycaraher/abletonctl
+module github.com/rorycaraher/studioctl
 
 go 1.27.4
 

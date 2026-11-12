@@ -4,21 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`abletonctl` is a Go CLI for managing a **single** Ableton Live production
-workspace: listing projects, backing up the projects and demos directories to
-rclone remotes, finding orphaned samples, collecting external file
-references into a project (a scriptable "Collect All and Save"), converting
-rendered demos to mp3, and validating its own config file.
+`studioctl` is a Go CLI for one solo producer's music files on one computer:
+backing up any number of named Directories to rclone Remotes, listing Demos
+and where they're backed up, converting rendered demos to mp3, finding peaks
+in audio files, and validating its own config file. Ableton-only tools —
+listing Projects, finding orphaned samples, collecting external file
+references into a project (a scriptable "Collect All and Save") — live under
+`studioctl ableton`. It was called `abletonctl` until it outgrew Ableton.
 
 - `README.md` — user-facing docs: install, configure, usage.
-- `CONTEXT.md` — domain vocabulary (Projects directory, Demos directory,
-  Project, Backup target, Orphan, Uncertain) and terms to avoid. Use these
-  terms in code, docs, and commit messages.
+- `CONTEXT.md` — domain vocabulary (Directory, Remote, Projects directory,
+  Demos directory, Project, Version, Demo, Location, Orphan, Uncertain, Peak)
+  and terms to avoid. Use these terms in code, docs, and commit messages.
 - `docs/adr/` — why the structure is what it is. Read
-  `0001-single-workspace-mvp.md` before reintroducing anything multi-artist:
-  the artist registry, per-artist roles, `PRODUCTION-*` grouping, the track
-  catalog CSV, and User Library backup were removed on purpose and live on a
-  separate branch.
+  `0001-single-workspace-mvp.md` before reintroducing anything multi-artist
+  (the artist registry, `PRODUCTION-*` grouping, the track catalog CSV were
+  removed on purpose), and `0004-named-directories-with-remotes.md` before
+  changing how Directories and Remotes are configured.
 - `IDEAS.md` — deliberately-deferred features.
 
 ## Commands
@@ -26,7 +28,7 @@ rendered demos to mp3, and validating its own config file.
 ```sh
 mise install        # pinned toolchain: go, golangci-lint, pre-commit, gitleaks, actionlint
 mise run check      # what CI runs: gofmt check, go vet, golangci-lint, go test
-mise run build      # go build -o abletonctl ./cmd/abletonctl
+mise run build      # go build -o studioctl ./cmd/studioctl
 mise run hooks      # install the pre-commit hook (once per clone)
 ```
 
@@ -66,8 +68,8 @@ dependency.
 
 Single-binary CLI built on [cobra](https://github.com/spf13/cobra). `main.go`
 only declares `version` and runs `newRootCmd()` (`root.go`), printing any
-returned error as `abletonctl: <err>` and exiting 1. Each command lives in its
-own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
+returned error as `studioctl: <err>` and exiting 1. Each command lives in its
+own file in `cmd/studioctl/` as a `newXCmd()` constructor registered in
 `newRootCmd()`:
 
 | File | Command(s) |
@@ -94,7 +96,7 @@ Conventions for the command layer:
   and DAW-agnostic.
 - Long flags are `--double-dash` only (pflag); flags may appear before or
   after positional arguments.
-- Shell completion (`abletonctl completion zsh|bash|fish|powershell`) is
+- Shell completion (`studioctl completion zsh|bash|fish|powershell`) is
   cobra's built-in. Give flags with a fixed value set a
   `RegisterFlagCompletionFunc` and path arguments a `ValidArgsFunction`.
 - Styling (lipgloss) degrades to plain text when stdout isn't a terminal or

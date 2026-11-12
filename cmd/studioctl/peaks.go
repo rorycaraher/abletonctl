@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/peaks"
+	"github.com/rorycaraher/studioctl/internal/peaks"
 )
 
 func newFindPeaksCmd() *cobra.Command {

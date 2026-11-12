@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/rorycaraher/abletonctl/internal/discovery"
+	"github.com/rorycaraher/studioctl/internal/discovery"
 )
 
 // Status describes how confidently a Samples/ file is used by a project.

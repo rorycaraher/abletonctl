@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/config"
-	"github.com/rorycaraher/abletonctl/internal/configcheck"
+	"github.com/rorycaraher/studioctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/configcheck"
 )
 
 func newConfigCmd() *cobra.Command {

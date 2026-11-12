@@ -10,9 +10,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/backup"
-	"github.com/rorycaraher/abletonctl/internal/config"
-	"github.com/rorycaraher/abletonctl/internal/demolist"
+	"github.com/rorycaraher/studioctl/internal/backup"
+	"github.com/rorycaraher/studioctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/demolist"
 )
 
 func newDemosCmd() *cobra.Command {

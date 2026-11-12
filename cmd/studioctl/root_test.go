@@ -12,9 +12,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/backup"
-	"github.com/rorycaraher/abletonctl/internal/demolist"
-	"github.com/rorycaraher/abletonctl/internal/discovery"
+	"github.com/rorycaraher/studioctl/internal/backup"
+	"github.com/rorycaraher/studioctl/internal/demolist"
+	"github.com/rorycaraher/studioctl/internal/discovery"
 )
 
 func run(t *testing.T, args ...string) (string, error) {
@@ -111,14 +111,14 @@ func TestZshCompletionParses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "#compdef abletonctl") {
+	if !strings.Contains(out, "#compdef studioctl") {
 		t.Fatalf("unexpected completion output:\n%.200s", out)
 	}
 	zsh, err := exec.LookPath("zsh")
 	if err != nil {
 		t.Skip("zsh not installed")
 	}
-	p := filepath.Join(t.TempDir(), "_abletonctl")
+	p := filepath.Join(t.TempDir(), "_studioctl")
 	if err := os.WriteFile(p, []byte(out), 0o644); err != nil {
 		t.Fatal(err)
 	}

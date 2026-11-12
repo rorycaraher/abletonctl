@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rorycaraher/abletonctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/config"
 )
 
 // Level is the severity of a Result.

@@ -10,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/rorycaraher/abletonctl/internal/backup"
+	"github.com/rorycaraher/studioctl/internal/backup"
 )
 
 func newBackupCmd() *cobra.Command {
