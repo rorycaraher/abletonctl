@@ -50,45 +50,53 @@ Requires `ffmpeg` on your `PATH` for `convert-demos`.
 
 ## Configure
 
-A single config file at `~/.config/abletonctl/config.toml`. See
+A single config file at `~/.config/studioctl/config.toml`. See
 `examples/config.toml`.
 
 ```toml
-projects_dir = "/path/to/your/projects"
-demos_dir = "/path/to/your/demos"
+[dirs.projects]
+path = "~/Music/Projects"
+remotes = ["r2:my-bucket/projects", "nas:music/projects"]
 
-projects_remote = "r2:my-bucket/projects"
-demos_remote = "gdrive:my-demos"
+[dirs.demos]
+path = "~/Music/Demos"
+remotes = ["gdrive:my-demos"]
 
-# Optional: the Ableton User Library.
-ableton_dir = "/path/to/your/User Library"
-ableton_remote = "r2:my-bucket/user-library"
+[dirs.user-library]
+path = "~/Music/Ableton/User Library"
+remotes = ["r2:my-bucket/user-library"]
 ```
+
+Each `[dirs.<name>]` entry is a **Directory**: a local `path` and any number
+of rclone `remotes` it's backed up to. Two names are special - `projects`
+and `demos` - and commands that need them look them up by name; every other
+Directory is only backed up. A leading `~/` in a path is your home
+directory.
 
 Backups always use `rclone copy` (never `sync`) - they only add/update files
 on the remote, they never delete from it. A local mistake can't take out
 your only backup copy too, at the cost of the remote potentially
 accumulating files you've since removed or renamed locally. Each remote is
-the exact destination - `projects_dir`'s contents land there directly, with
+the exact destination - the Directory's contents land there directly, with
 no extra subfolder.
 
 ## Usage
 
 ```sh
-# List every project discovered under projects_dir, with how many .als
+# List every project discovered in the projects Directory, with how many .als
 # Versions it has.
 abletonctl projects
 
-# List every Demo under demos_dir. A .wav and .mp3 with the same name are
+# List every Demo in the demos Directory. A .wav and .mp3 with the same name are
 # one Demo.
 abletonctl demos
 
-# Include the Demos on demos_remote too (a read-only rclone listing, so it
+# Include the Demos on the demos Directory's remote too (a read-only rclone listing, so it
 # needs rclone and network access). Each Demo is tagged local, remote or
 # both - decided by name only, so "both" doesn't mean the files are identical.
 abletonctl demos --remote
 
-# Convert every aiff/wav under demos_dir to a 320k mp3, then permanently
+# Convert every aiff/wav in the demos Directory to a 320k mp3, then permanently
 # delete the original (and its Ableton .asd analysis file) once the
 # conversion is verified to have succeeded. A
 # failed conversion never deletes its source - it's reported and left in
@@ -106,7 +114,7 @@ abletonctl find-peaks mix.wav --threshold -1
 abletonctl find-peaks mix.wav --bpm 124
 abletonctl find-peaks mix.aif --bpm 90 --timesig 6/8
 
-# Back up both projects_dir and demos_dir.
+# Back up every Directory to each of its remotes.
 abletonctl backup
 
 # Narrow to one target, and preview without transferring.

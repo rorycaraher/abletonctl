@@ -1,4 +1,4 @@
-// Package configcheck validates the abletonctl config file and the things
+// Package configcheck validates the config file and the things
 // it points at: directories, rclone remotes, and the external binaries the
 // commands shell out to. It reports every problem rather than stopping at
 // the first.
@@ -8,10 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"sort"
+	"path/filepath"
 	"strings"
-
-	"github.com/BurntSushi/toml"
 
 	"github.com/rorycaraher/abletonctl/internal/config"
 )
@@ -89,94 +87,46 @@ func Check(path string, env Env) []Result {
 		rs = append(rs, Result{l, fmt.Sprintf(format, a...)})
 	}
 
-	var cfg config.Config
-	md, err := toml.DecodeFile(path, &cfg)
+	cfg, unknown, err := config.LoadChecked(path)
 	if err != nil {
 		add(Fail, "cannot load %s: %v", path, err)
 		return rs
 	}
 	add(OK, "config parses: %s", path)
 
-	if undecoded := md.Undecoded(); len(undecoded) > 0 {
-		keys := make([]string, len(undecoded))
-		for i, k := range undecoded {
-			keys[i] = k.String()
-		}
-		sort.Strings(keys)
-		add(Fail, "unknown key(s) (typo?): %s", strings.Join(keys, ", "))
+	if len(unknown) > 0 {
+		add(Fail, "unknown key(s) (typo?): %s", strings.Join(unknown, ", "))
 	}
 
-	checkDir := func(key, dir string, required bool) {
-		switch {
-		case dir == "" && required:
-			add(Fail, "%s is not set", key)
-		case dir == "":
-			add(Warn, "%s is not set (related commands are unavailable)", key)
-		default:
-			info, err := os.Stat(dir)
-			switch {
-			case err != nil:
-				hint := ""
-				if strings.HasPrefix(dir, "~") {
-					hint = " (~ is not expanded; use an absolute path)"
-				}
-				add(Fail, "%s: %v%s", key, err, hint)
-			case !info.IsDir():
-				add(Fail, "%s: %s is not a directory", key, dir)
-			default:
-				add(OK, "%s exists: %s", key, dir)
-			}
-		}
+	names := cfg.Names()
+	if len(names) == 0 {
+		add(Fail, "no Directories configured; add a [dirs.<name>] entry")
+		return rs
 	}
-	checkDir("ableton_dir", cfg.AbletonDir, false)
-	checkDir("projects_dir", cfg.ProjectsDir, true)
-	checkDir("demos_dir", cfg.DemosDir, false)
+	if _, ok := cfg.Dir(config.Projects); !ok {
+		add(Warn, "no [dirs.%s]: listing Projects is unavailable", config.Projects)
+	}
+	if _, ok := cfg.Dir(config.Demos); !ok {
+		add(Warn, "no [dirs.%s]: demos and convert-demos are unavailable", config.Demos)
+	}
+
+	var dirs []config.Directory
+	for _, name := range names {
+		d, _ := cfg.Dir(name)
+		dirs = append(dirs, d)
+		checkDir(d, add)
+	}
+	checkOverlaps(dirs, add)
 
 	var remotes []string
-	pair := func(dirKey, dir, remoteKey, remote string) {
-		if remote != "" {
-			remotes = append(remotes, remote)
-		}
-		if (dir == "") != (remote == "") && (dir != "" || remote != "") {
-			add(Warn, "%s and %s must both be set for backup; this target will be skipped", dirKey, remoteKey)
-		}
-		if remote != "" && !strings.Contains(remote, ":") {
-			add(Fail, "%s %q has no \"name:\" prefix", remoteKey, remote)
-		}
+	for _, d := range dirs {
+		remotes = append(remotes, d.Remotes...)
 	}
-	pair("ableton_dir", cfg.AbletonDir, "ableton_remote", cfg.AbletonRemote)
-	pair("projects_dir", cfg.ProjectsDir, "projects_remote", cfg.ProjectsRemote)
-	pair("demos_dir", cfg.DemosDir, "demos_remote", cfg.DemosRemote)
-
 	if len(remotes) > 0 {
-		if _, err := env.LookPath("rclone"); err != nil {
-			add(Fail, "rclone not found on PATH (needed for backup)")
-		} else {
-			add(OK, "rclone found")
-			known, err := env.RcloneRemotes()
-			if err != nil {
-				add(Warn, "could not list rclone remotes: %v", err)
-			} else {
-				have := map[string]bool{}
-				for _, n := range known {
-					have[n] = true
-				}
-				for _, r := range remotes {
-					name, _, ok := strings.Cut(r, ":")
-					if !ok {
-						continue
-					}
-					if have[name] {
-						add(OK, "rclone remote %q exists", name)
-					} else {
-						add(Fail, "rclone remote %q (from %q) is not configured; see `rclone listremotes`", name, r)
-					}
-				}
-			}
-		}
+		checkRclone(remotes, env, add)
 	}
 
-	if cfg.DemosDir != "" {
+	if _, ok := cfg.Dir(config.Demos); ok {
 		if _, err := env.LookPath("ffmpeg"); err != nil {
 			add(Warn, "ffmpeg not found on PATH (needed for convert-demos)")
 		} else {
@@ -184,4 +134,120 @@ func Check(path string, env Env) []Result {
 		}
 	}
 	return rs
+}
+
+type addFunc func(l Level, format string, a ...any)
+
+// checkDir checks one Directory's path and the form of its Remotes.
+func checkDir(d config.Directory, add addFunc) {
+	key := "dirs." + d.Name
+	if d.Path == "" {
+		add(Fail, "%s: path is not set", key)
+	} else if info, err := os.Stat(d.Path); err != nil {
+		add(Fail, "%s: %v", key, err)
+	} else if !info.IsDir() {
+		add(Fail, "%s: %s is not a directory", key, d.Path)
+	} else {
+		add(OK, "%s exists: %s", key, d.Path)
+	}
+
+	if len(d.Remotes) == 0 && d.Name != config.Projects && d.Name != config.Demos {
+		add(Warn, "%s has no remotes, so nothing uses it", key)
+	}
+	for _, r := range d.Remotes {
+		if !strings.Contains(r, ":") {
+			add(Fail, "%s: remote %q has no \"name:\" prefix", key, r)
+		}
+	}
+}
+
+// checkOverlaps catches Directories that back up on top of each other:
+// one Remote shared by two Directories mixes both trees together, so it
+// fails; nested Remotes or nested paths may be deliberate, so they warn.
+func checkOverlaps(dirs []config.Directory, add addFunc) {
+	for i, a := range dirs {
+		for _, b := range dirs[i+1:] {
+			for _, ra := range a.Remotes {
+				for _, rb := range b.Remotes {
+					switch {
+					case cleanRemote(ra) == cleanRemote(rb):
+						add(Fail, "dirs.%s and dirs.%s share the remote %q; their backups would mix", a.Name, b.Name, ra)
+					case remoteWithin(ra, rb):
+						add(Warn, "dirs.%s's remote %q is inside dirs.%s's remote %q", a.Name, ra, b.Name, rb)
+					case remoteWithin(rb, ra):
+						add(Warn, "dirs.%s's remote %q is inside dirs.%s's remote %q", b.Name, rb, a.Name, ra)
+					}
+				}
+			}
+			if a.Path == "" || b.Path == "" {
+				continue
+			}
+			pa, pb := filepath.Clean(a.Path), filepath.Clean(b.Path)
+			switch {
+			case pa == pb:
+				add(Warn, "dirs.%s and dirs.%s have the same path %s", a.Name, b.Name, pa)
+			case pathWithin(pa, pb):
+				add(Warn, "dirs.%s (%s) is inside dirs.%s (%s), so it is backed up twice", a.Name, pa, b.Name, pb)
+			case pathWithin(pb, pa):
+				add(Warn, "dirs.%s (%s) is inside dirs.%s (%s), so it is backed up twice", b.Name, pb, a.Name, pa)
+			}
+		}
+	}
+}
+
+func cleanRemote(r string) string {
+	name, p, ok := strings.Cut(r, ":")
+	if !ok {
+		return r
+	}
+	return name + ":" + strings.Trim(p, "/")
+}
+
+// remoteWithin reports whether remote a is strictly inside remote b.
+func remoteWithin(a, b string) bool {
+	a, b = cleanRemote(a), cleanRemote(b)
+	if a == b {
+		return false
+	}
+	if strings.HasSuffix(b, ":") {
+		return strings.HasPrefix(a, b)
+	}
+	return strings.HasPrefix(a, b+"/")
+}
+
+// pathWithin reports whether path a is strictly inside path b.
+func pathWithin(a, b string) bool {
+	rel, err := filepath.Rel(b, a)
+	return err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// checkRclone checks rclone is installed and knows every remote name used.
+func checkRclone(remotes []string, env Env, add addFunc) {
+	if _, err := env.LookPath("rclone"); err != nil {
+		add(Fail, "rclone not found on PATH (needed for backup)")
+		return
+	}
+	add(OK, "rclone found")
+	known, err := env.RcloneRemotes()
+	if err != nil {
+		add(Warn, "could not list rclone remotes: %v", err)
+		return
+	}
+	have := map[string]bool{}
+	for _, n := range known {
+		have[n] = true
+	}
+	seen := map[string]bool{}
+	for _, r := range remotes {
+		name, _, ok := strings.Cut(r, ":")
+		if !ok || seen[name] {
+			continue
+		}
+		seen[name] = true
+		if have[name] {
+			add(OK, "rclone remote %q exists", name)
+		} else {
+			add(Fail, "rclone remote %q (from %q) is not configured; see `rclone listremotes`", name, r)
+		}
+	}
 }

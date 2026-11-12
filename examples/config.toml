@@ -1,17 +1,25 @@
 # Example config file.
-# Real path: ~/.config/abletonctl/config.toml
+# Real path: ~/.config/studioctl/config.toml
 #
-# Points abletonctl at your Ableton Live workspace: a directory full of
-# Ableton Projects, and a directory WIP demo bounces land in. Each has its
-# own rclone remote it backs up to - the remote is the exact destination,
-# not a parent directory.
+# Each [dirs.<name>] entry is a Directory: a local path, and the rclone
+# remotes it is backed up to. A remote is the exact destination, not a
+# parent directory - the Directory's contents land in it directly. A leading
+# "~/" in a path means your home directory.
+#
+# Two names are special: "projects" (your Ableton Projects) and "demos"
+# (where demo bounces land). Commands that need them look them up by name.
+# Every other Directory is only backed up.
 
-projects_dir = "/path/to/your/projects"
-demos_dir = "/path/to/your/demos"
+[dirs.projects]
+path = "~/Music/Projects"
+remotes = ["r2:my-bucket/projects", "nas:music/projects"]
 
-projects_remote = "r2:my-bucket/projects"
-demos_remote = "gdrive:my-demos"
+[dirs.demos]
+path = "~/Music/Demos"
+remotes = ["gdrive:my-demos"]
 
-# Optional: the Ableton User Library (presets, templates, ...).
-ableton_dir = "/path/to/your/User Library"
-ableton_remote = "r2:my-bucket/user-library"
+# Anything else you want backed up: the Ableton User Library, a samples
+# drive, premasters, ...
+[dirs.user-library]
+path = "~/Music/Ableton/User Library"
+remotes = ["r2:my-bucket/user-library"]

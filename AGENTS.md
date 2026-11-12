@@ -99,19 +99,22 @@ Conventions for the command layer:
 All actual logic lives in `internal/`, one package per concern; the command
 files do only argument handling, orchestration, and output formatting:
 
-- **`internal/config`** — loads the single flat config file
-  (`~/.config/abletonctl/config.toml`): `projects_dir`, `demos_dir`, `ableton_dir`
-  (User Library), and a rclone remote for each (`projects_remote`,
-  `demos_remote`, `ableton_remote`). Pure data
-  loading. See `examples/config.toml`.
+- **`internal/config`** — loads the config file
+  (`~/.config/studioctl/config.toml`): any number of named Directories
+  (`[dirs.<name>]`), each a `path` and a list of rclone `remotes`. The names
+  `projects` and `demos` are reserved (`config.Projects`/`config.Demos`) and
+  looked up by commands; every other Directory is only backed up. `Names()`
+  keeps file order; a leading `~/` in a path is expanded. See
+  `examples/config.toml` and `docs/adr/0004-named-directories-with-remotes.md`.
 
-- **`internal/configcheck`** — backs `config check`. Re-decodes the config
-  with TOML metadata to flag unknown keys (typos), and checks that the
-  directories exist, remotes have a `name:` prefix and exist in
-  `rclone listremotes`, and `rclone`/`ffmpeg` are on `PATH`. Returns a list
-  of `ok`/`warn`/`FAIL` results rather than stopping at the first problem.
-  Machine lookups go through an injectable `Env`, so tests need neither
-  binary.
+- **`internal/configcheck`** — backs `config check`. Flags unknown keys at
+  both levels (typos), checks each Directory's path exists, remotes have a
+  `name:` prefix and exist in `rclone listremotes`, and `rclone`/`ffmpeg` are
+  on `PATH`. Fails on a Remote shared by two Directories; warns on nested
+  Remotes or paths, a missing `projects`/`demos`, and a non-reserved
+  Directory with no Remotes. Returns a list of `ok`/`warn`/`FAIL` results
+  rather than stopping at the first problem. Machine lookups go through an
+  injectable `Env`, so tests need neither binary.
 
 - **`internal/discovery`** — structural filesystem scanning with no
   exclude-lists: `DiscoverProjects` finds the direct children of a directory
@@ -119,14 +122,13 @@ files do only argument handling, orchestration, and output formatting:
   folder is never scanned). Every other package that needs to know what a
   "project" is depends on this one.
 
-- **`internal/backup`** — turns a loaded config + optional target filter
-  into a list of `Job{Target, LocalDir, RemoteDir}` via `BuildJobs`, then runs
-  each through `rclone copy` (never `sync` — copy only adds/updates on the
-  remote, so a local mistake can't destroy the remote copy too). There are
-  exactly three fixed targets, projects, demos and ableton; a target missing its
-  directory or remote is skipped, or an error if explicitly requested.
-  `ListArgs`/`ListRemote` list a remote's files (`rclone lsf`, read-only) for
-  `demos --remote`.
+- **`internal/backup`** — turns a loaded config + optional Directory names
+  into a list of `Job{Dir, LocalDir, RemoteDir}` via `BuildJobs` (one per
+  Directory per Remote), then runs each through `rclone copy` (never `sync`
+  — copy only adds/updates on the remote, so a local mistake can't destroy
+  the remote copy too). A Directory with no Remotes is skipped, or an error
+  if named explicitly. `ListArgs`/`ListRemote` list a remote's files
+  (`rclone lsf`, read-only) for `demos --remote`.
 
 - **`internal/samples`** — orphan-sample detection. `als.go` streams the
   gzipped XML of an `.als` file token-by-token (not a fixed-schema
@@ -188,9 +190,10 @@ files do only argument handling, orchestration, and output formatting:
   deletes a source file after verifying its converted replacement; `collect`
   never overwrites the input `.als`. Match this bias — prefer "leave it and
   report" over "delete/overwrite" — for any new mutating command.
-- Keep the config surface small. One flat file, two directories, two
-  remotes; don't add named roles or registries back without revisiting
-  `docs/adr/0001-single-workspace-mvp.md`.
+- Keep the config surface small: one file of named Directories, each a
+  path and its Remotes, with `projects` and `demos` as the only reserved
+  names. Don't add kinds, roles or registries without revisiting
+  `docs/adr/0004-named-directories-with-remotes.md` (and `0001`).
 - Each `internal/` package is independently testable against fixture data
   (see `internal/*/*_test.go`) without needing `rclone`/`ffmpeg` installed;
   keep new packages structured so their core logic doesn't require shelling

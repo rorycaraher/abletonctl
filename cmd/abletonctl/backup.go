@@ -17,7 +17,7 @@ func newBackupCmd() *cobra.Command {
 	var dryRun, quiet, yes bool
 	cmd := &cobra.Command{
 		Use:   "backup",
-		Short: "Back up the projects, demos and Ableton directories to rclone remotes",
+		Short: "Back up every Directory to its rclone remotes",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(configPath)
@@ -25,18 +25,22 @@ func newBackupCmd() *cobra.Command {
 				return err
 			}
 
-			jobs, err := backup.BuildJobs(cfg, target)
+			var names []string
+			if target != "" {
+				names = []string{target}
+			}
+			jobs, err := backup.BuildJobs(cfg, names)
 			if err != nil {
 				return err
 			}
 			if len(jobs) == 0 {
-				fmt.Println("no backup targets configured")
+				fmt.Println("no Directories with remotes configured")
 				return nil
 			}
 
 			if !dryRun && !yes {
 				for _, j := range jobs {
-					fmt.Printf("[%s] %s -> %s\n", j.Target, j.LocalDir, j.RemoteDir)
+					fmt.Printf("[%s] %s -> %s\n", j.Dir, j.LocalDir, j.RemoteDir)
 				}
 				ok, err := confirm(os.Stdin, os.Stdout, "Start backup?")
 				if err != nil {
@@ -50,7 +54,7 @@ func newBackupCmd() *cobra.Command {
 
 			for _, j := range jobs {
 				if !quiet {
-					fmt.Printf("==> [%s] %s -> %s\n", j.Target, j.LocalDir, j.RemoteDir)
+					fmt.Printf("==> [%s] %s -> %s\n", j.Dir, j.LocalDir, j.RemoteDir)
 				}
 				if err := backup.Run(j, dryRun, quiet, os.Stdout, os.Stderr); err != nil {
 					return err
@@ -59,13 +63,11 @@ func newBackupCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&target, "target", "", "limit to one backup target (projects, demos or ableton)")
+	cmd.Flags().StringVar(&target, "target", "", "limit to one Directory")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "pass --dry-run through to rclone")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "don't list each file as it is copied")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "skip the confirmation prompt")
 	addConfigFlag(cmd, &configPath)
-	_ = cmd.RegisterFlagCompletionFunc("target", cobra.FixedCompletions(
-		[]string{string(backup.Projects), string(backup.Demos), string(backup.Ableton)}, cobra.ShellCompDirectiveNoFileComp))
 	return cmd
 }
 

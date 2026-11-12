@@ -8,6 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
+	"github.com/rorycaraher/abletonctl/internal/config"
 	"github.com/rorycaraher/abletonctl/internal/discovery"
 )
 
@@ -15,23 +16,24 @@ func newProjectsCmd() *cobra.Command {
 	var configPath string
 	cmd := &cobra.Command{
 		Use:   "projects",
-		Short: "List projects under projects_dir, with their .als file counts",
+		Short: "List Projects in the projects Directory, with their .als file counts",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := loadConfig(configPath)
 			if err != nil {
 				return err
 			}
-			if cfg.ProjectsDir == "" {
-				return fmt.Errorf("projects_dir is not configured")
-			}
-
-			projects, err := discovery.DiscoverProjects(cfg.ProjectsDir)
+			dir, err := requireDir(cfg, config.Projects)
 			if err != nil {
 				return err
 			}
 
-			fmt.Println(boldStyle.Render(cfg.ProjectsDir))
+			projects, err := discovery.DiscoverProjects(dir.Path)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(boldStyle.Render(dir.Path))
 			for _, line := range projectLines(projects) {
 				fmt.Println(line)
 			}

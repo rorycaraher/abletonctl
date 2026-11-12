@@ -1,6 +1,5 @@
-// Package backup builds and runs rclone copy jobs for the three fixed backup
-// targets: the projects directory, the demos directory and the Ableton User
-// Library directory.
+// Package backup builds and runs rclone copy jobs: one for each Directory
+// and each of its Remotes.
 package backup
 
 import (
@@ -12,51 +11,39 @@ import (
 	"github.com/rorycaraher/abletonctl/internal/config"
 )
 
-// Target identifies which of the three directories a Job backs up.
-type Target string
-
-const (
-	Projects Target = "projects"
-	Demos    Target = "demos"
-	Ableton  Target = "ableton"
-)
-
 // Job is one local-directory-to-remote rclone copy. RemoteDir is the exact
 // destination — rclone lands LocalDir's contents there directly, with no
 // implicit subfolder.
 type Job struct {
-	Target    Target
+	Dir       string // Directory name
 	LocalDir  string
 	RemoteDir string
 }
 
-// BuildJobs returns the backup jobs configured in cfg, filtered to
-// targetFilter when non-empty ("projects", "demos" or "ableton"). A target with an
-// empty local dir or remote is treated as unconfigured: silently omitted
-// when no filter is given, or an error when explicitly requested.
-func BuildJobs(cfg *config.Config, targetFilter string) ([]Job, error) {
-	if targetFilter != "" && targetFilter != string(Projects) && targetFilter != string(Demos) && targetFilter != string(Ableton) {
-		return nil, fmt.Errorf("unknown target %q (want %q, %q or %q)", targetFilter, Projects, Demos, Ableton)
+// BuildJobs returns a Job for every Remote of every Directory, in config
+// file order. With names, only those Directories are included, in that
+// order. A Directory without Remotes is skipped, or an error when it was
+// named explicitly; an unknown name is an error.
+func BuildJobs(cfg *config.Config, names []string) ([]Job, error) {
+	explicit := len(names) > 0
+	if !explicit {
+		names = cfg.Names()
 	}
-
-	candidates := []Job{
-		{Target: Projects, LocalDir: cfg.ProjectsDir, RemoteDir: cfg.ProjectsRemote},
-		{Target: Demos, LocalDir: cfg.DemosDir, RemoteDir: cfg.DemosRemote},
-		{Target: Ableton, LocalDir: cfg.AbletonDir, RemoteDir: cfg.AbletonRemote},
-	}
-
 	var jobs []Job
-	for _, j := range candidates {
-		if targetFilter != "" && string(j.Target) != targetFilter {
-			continue
+	for _, name := range names {
+		d, ok := cfg.Dir(name)
+		if !ok {
+			return nil, fmt.Errorf("no [dirs.%s] in config", name)
 		}
-		if j.LocalDir == "" || j.RemoteDir == "" {
-			if targetFilter == string(j.Target) {
-				return nil, fmt.Errorf("%s target is not fully configured (need both a directory and a remote)", j.Target)
+		if len(d.Remotes) == 0 {
+			if explicit {
+				return nil, fmt.Errorf("dirs.%s has no remotes", name)
 			}
 			continue
 		}
-		jobs = append(jobs, j)
+		for _, r := range d.Remotes {
+			jobs = append(jobs, Job{Dir: name, LocalDir: d.Path, RemoteDir: r})
+		}
 	}
 	return jobs, nil
 }

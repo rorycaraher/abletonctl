@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/rorycaraher/abletonctl/internal/config"
@@ -32,7 +34,7 @@ func newRootCmd() *cobra.Command {
 // addConfigFlag registers --config on the commands that read the config
 // file. find-orphans and collect take explicit paths and don't get it.
 func addConfigFlag(cmd *cobra.Command, path *string) {
-	cmd.Flags().StringVar(path, "config", "", "path to config file (default ~/.config/abletonctl/config.toml)")
+	cmd.Flags().StringVar(path, "config", "", "path to config file (default ~/.config/studioctl/config.toml)")
 	_ = cmd.MarkFlagFilename("config", "toml")
 }
 
@@ -46,4 +48,14 @@ func loadConfig(configFlag string) (*config.Config, error) {
 		}
 	}
 	return config.Load(path)
+}
+
+// requireDir returns the Directory called name, or an error saying it
+// isn't configured.
+func requireDir(cfg *config.Config, name string) (config.Directory, error) {
+	d, ok := cfg.Dir(name)
+	if !ok {
+		return d, fmt.Errorf("no [dirs.%s] in config", name)
+	}
+	return d, nil
 }

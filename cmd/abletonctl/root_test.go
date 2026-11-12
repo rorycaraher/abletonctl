@@ -177,15 +177,15 @@ func TestWriteDemos(t *testing.T) {
 	}
 }
 
-func TestDemosRemoteWithoutDemosRemote(t *testing.T) {
+func TestDemosRemoteWithoutRemotes(t *testing.T) {
 	dir := t.TempDir()
 	cfg := filepath.Join(dir, "config.toml")
-	if err := os.WriteFile(cfg, []byte("demos_dir = \""+dir+"\"\n"), 0o644); err != nil {
+	if err := os.WriteFile(cfg, []byte("[dirs.demos]\npath = \""+dir+"\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	_, err := run(t, "demos", "--remote", "--config", cfg)
-	if err == nil || !strings.Contains(err.Error(), "demos_remote is not configured") {
-		t.Errorf("demos --remote without demos_remote: got %v", err)
+	if err == nil || !strings.Contains(err.Error(), "dirs.demos has no remotes") {
+		t.Errorf("demos --remote without remotes: got %v", err)
 	}
 }
 

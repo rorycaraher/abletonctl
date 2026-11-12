@@ -19,11 +19,11 @@ func newDemosCmd() *cobra.Command {
 	var remote bool
 	cmd := &cobra.Command{
 		Use:   "demos",
-		Short: "List Demos in demos_dir",
-		Long: `List every Demo under demos_dir: audio files grouped by name, so a .wav and
+		Short: "List Demos in the demos Directory",
+		Long: `List every Demo in the demos Directory: audio files grouped by name, so a .wav and
 its .mp3 are one Demo.
 
-With --remote, Demos on demos_remote are included too (listed with rclone, so
+With --remote, Demos on the demos Directory's remote are included too (listed with rclone, so
 it needs rclone and network access). Each Demo then shows where it was found:
 local, remote, or both. Locations are decided by name only, not by comparing
 content, so "both" does not mean the files are identical.`,
@@ -41,29 +41,34 @@ content, so "both" does not mean the files are identical.`,
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&remote, "remote", false, "also include Demos on demos_remote (uses rclone and the network)")
+	cmd.Flags().BoolVar(&remote, "remote", false, "also include Demos on the demos remote (uses rclone and the network)")
 	addConfigFlag(cmd, &configPath)
 	return cmd
 }
 
-// loadDemos lists the local Demos, and with remote also those on
-// demos_remote, merged into one list. A remote that can't be listed is an
-// error: silently showing local-only would read as "not backed up".
+// loadDemos lists the local Demos, and with remote also those on the demos
+// Directory's Remote, merged into one list. A remote that can't be listed is
+// an error: silently showing local-only would read as "not backed up".
 func loadDemos(cfg *config.Config, remote bool) ([]demolist.Demo, error) {
-	if cfg.DemosDir == "" {
-		return nil, fmt.Errorf("demos_dir is not configured")
+	dir, err := requireDir(cfg, config.Demos)
+	if err != nil {
+		return nil, err
 	}
-	local, err := demolist.ListDemos(cfg.DemosDir)
+	local, err := demolist.ListDemos(dir.Path)
 	if err != nil {
 		return nil, err
 	}
 	if !remote {
 		return local, nil
 	}
-	if cfg.DemosRemote == "" {
-		return nil, fmt.Errorf("demos_remote is not configured")
+	switch len(dir.Remotes) {
+	case 0:
+		return nil, fmt.Errorf("dirs.%s has no remotes", config.Demos)
+	case 1:
+	default:
+		return nil, fmt.Errorf("demos --remote does not support more than one remote yet")
 	}
-	paths, err := backup.ListRemote(cfg.DemosRemote)
+	paths, err := backup.ListRemote(dir.Remotes[0])
 	if err != nil {
 		return nil, err
 	}

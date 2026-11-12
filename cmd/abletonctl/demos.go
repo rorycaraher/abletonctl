@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/rorycaraher/abletonctl/internal/config"
 	"github.com/rorycaraher/abletonctl/internal/demos"
 )
 
@@ -21,11 +22,12 @@ func newConvertDemosCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if cfg.DemosDir == "" {
-				return fmt.Errorf("demos_dir is not configured")
+			dir, err := requireDir(cfg, config.Demos)
+			if err != nil {
+				return err
 			}
 
-			outcomes, err := demos.ConvertAndCleanup(cfg.DemosDir, dryRun, os.Stdout, os.Stderr)
+			outcomes, err := demos.ConvertAndCleanup(dir.Path, dryRun, os.Stdout, os.Stderr)
 			if err != nil {
 				return err
 			}
