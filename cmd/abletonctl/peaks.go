@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 	"strings"
 
@@ -55,6 +56,18 @@ Live shows tempo, whatever the time signature.`,
 	return cmd
 }
 
+// displayLevel rounds a peak's level to two decimals for display. A peak is
+// only reported when it exceeds the threshold, so a level that would round
+// down to the threshold or under it (-5.999 with a -6 threshold) is shown as
+// the next value up (-5.99) instead.
+func displayLevel(db, threshold float64) float64 {
+	shown := math.Round(db*100) / 100
+	if shown <= threshold {
+		shown = (math.Floor(threshold*100) + 1) / 100
+	}
+	return shown
+}
+
 // formatPeaks renders one line per peak, time, bar (when bpm > 0) and level,
 // then a summary line.
 func formatPeaks(found []peaks.Peak, threshold, bpm float64, ts peaks.TimeSig) string {
@@ -68,7 +81,7 @@ func formatPeaks(found []peaks.Peak, threshold, bpm float64, ts peaks.TimeSig) s
 		if bpm > 0 {
 			line += fmt.Sprintf("  bar %-*d", barWidth, peaks.Bar(p.Time, bpm, ts))
 		}
-		fmt.Fprintf(&b, "%s  %s\n", line, dimStyle.Render(fmt.Sprintf("%5.1f dB", p.Level)))
+		fmt.Fprintf(&b, "%s  %s\n", line, dimStyle.Render(fmt.Sprintf("%6.2f dB", displayLevel(p.Level, threshold))))
 	}
 	noun := "peaks"
 	if len(found) == 1 {
