@@ -12,11 +12,11 @@ import (
 	"github.com/rorycaraher/abletonctl/internal/peaks"
 )
 
-func newPeakfinderCmd() *cobra.Command {
+func newFindPeaksCmd() *cobra.Command {
 	var threshold, bpm float64
 	var timesig string
 	cmd := &cobra.Command{
-		Use:   "peakfinder <file>",
+		Use:   "find-peaks <file>",
 		Short: "List where a wav/aiff file peaks over a level threshold",
 		Long: `List where a wav/aiff file peaks over a level threshold, as HH:MM:SS.mmm.
 

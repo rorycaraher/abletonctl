@@ -101,13 +101,13 @@ abletonctl convert-demos --dry-run
 
 # List where a wav/aiff file goes over -6 dBFS, as HH:MM:SS.mmm. Crossings
 # less than 100ms apart are one peak, reported at its loudest sample.
-abletonctl peakfinder mix.wav
-abletonctl peakfinder mix.wav --threshold -1
+abletonctl find-peaks mix.wav
+abletonctl find-peaks mix.wav --threshold -1
 
 # Show the bar each peak falls in too. Assumes the file starts at bar 1;
 # --bpm is quarter notes per minute, as Live shows it. 4/4 unless --timesig.
-abletonctl peakfinder mix.wav --bpm 124
-abletonctl peakfinder mix.aif --bpm 90 --timesig 6/8
+abletonctl find-peaks mix.wav --bpm 124
+abletonctl find-peaks mix.aif --bpm 90 --timesig 6/8
 
 # Back up both projects_dir and demos_dir.
 abletonctl backup

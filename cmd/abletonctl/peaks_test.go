@@ -10,7 +10,7 @@ import (
 	"github.com/rorycaraher/abletonctl/internal/peaks"
 )
 
-func TestPeakfinderFlagErrors(t *testing.T) {
+func TestFindPeaksFlagErrors(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "x.wav")
 	if err := os.WriteFile(path, []byte("not audio"), 0o644); err != nil {
 		t.Fatal(err)
@@ -19,13 +19,13 @@ func TestPeakfinderFlagErrors(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"peakfinder"}, "accepts 1 arg"},
-		{[]string{"peakfinder", "a", "b"}, "accepts 1 arg"},
-		{[]string{"peakfinder", path, "--timesig", "3/4"}, "--timesig needs --bpm"},
-		{[]string{"peakfinder", path, "--bpm", "0"}, "--bpm must be greater than 0"},
-		{[]string{"peakfinder", path, "--bpm", "-120"}, "--bpm must be greater than 0"},
-		{[]string{"peakfinder", path, "--bpm", "120", "--timesig", "4/3"}, "invalid time signature"},
-		{[]string{"peakfinder", path}, "not a WAV or AIFF file"},
+		{[]string{"find-peaks"}, "accepts 1 arg"},
+		{[]string{"find-peaks", "a", "b"}, "accepts 1 arg"},
+		{[]string{"find-peaks", path, "--timesig", "3/4"}, "--timesig needs --bpm"},
+		{[]string{"find-peaks", path, "--bpm", "0"}, "--bpm must be greater than 0"},
+		{[]string{"find-peaks", path, "--bpm", "-120"}, "--bpm must be greater than 0"},
+		{[]string{"find-peaks", path, "--bpm", "120", "--timesig", "4/3"}, "invalid time signature"},
+		{[]string{"find-peaks", path}, "not a WAV or AIFF file"},
 	} {
 		_, err := run(t, tc.args...)
 		if err == nil || !strings.Contains(err.Error(), tc.want) {

@@ -78,7 +78,7 @@ own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
 | `orphans.go` | `find-orphans <project-path> [--quarantine]` |
 | `collect.go` | `collect <.als>` / `collect --all <dir>` |
 | `demos.go` | `convert-demos [--dry-run]` |
-| `peakfinder.go` | `peakfinder <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
+| `peaks.go` | `find-peaks <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
 | `demos_list.go` | `demos [--project <path>] [--remote]` (Demo to Version links) |
 | `style.go` | lipgloss styles (no command) |
 
@@ -171,7 +171,7 @@ files do only argument handling, orchestration, and output formatting:
   verifying the output exists and is non-empty (`Convert` then `os.Remove`
   in `ConvertAndCleanup`); a failed conversion never triggers a delete.
 
-- **`internal/peaks`** — backs `peakfinder`. Decodes uncompressed WAV
+- **`internal/peaks`** — backs `find-peaks`. Decodes uncompressed WAV
   (PCM/float, incl. `WAVE_FORMAT_EXTENSIBLE`) and AIFF/AIFF-C (`NONE`,
   `twos`, `sowt`, `fl32`, `fl64`) in pure Go, streaming, with no `ffmpeg`
   dependency; the container is detected by magic bytes, and chunks may come
