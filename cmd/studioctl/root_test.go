@@ -36,11 +36,11 @@ func TestUnknownCommand(t *testing.T) {
 
 func TestArgValidation(t *testing.T) {
 	for _, args := range [][]string{
-		{"ableton", "find-orphans"},
-		{"ableton", "find-orphans", "a", "b"},
-		{"ableton", "collect"},
-		{"ableton", "collect", "a", "b"},
-		{"ableton", "projects", "extra"},
+		{"find-orphans"},
+		{"find-orphans", "a", "b"},
+		{"collect"},
+		{"collect", "a", "b"},
+		{"projects", "extra"},
 		{"demos", "extra"},
 		{"config", "check", "extra"},
 	} {
@@ -57,11 +57,11 @@ func TestInterspersedFlags(t *testing.T) {
 		cmd, flag string
 	}{{"find-orphans", "quarantine"}, {"collect", "all"}} {
 		for _, args := range [][]string{
-			{"ableton", tc.cmd, "dir", "--" + tc.flag},
-			{"ableton", tc.cmd, "--" + tc.flag, "dir"},
+			{tc.cmd, "dir", "--" + tc.flag},
+			{tc.cmd, "--" + tc.flag, "dir"},
 		} {
 			root := newRootCmd()
-			sub, _, err := root.Find([]string{"ableton", tc.cmd})
+			sub, _, err := root.Find([]string{tc.cmd})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -129,15 +129,15 @@ func TestZshCompletionParses(t *testing.T) {
 
 func TestProjectLines(t *testing.T) {
 	ps := []discovery.Project{
-		{Name: "a", Path: "/p/a", AlsFiles: make([]string, 2)},
-		{Name: "longer name", Path: "/p/l", AlsFiles: make([]string, 12)},
-		{Name: "mid", Path: "/p/m", AlsFiles: make([]string, 1)},
+		{Name: "a", Path: "/p/a", Versions: make([]string, 2)},
+		{Name: "longer name", Path: "/p/l", Versions: make([]string, 12)},
+		{Name: "mid", Path: "/p/m", Versions: make([]string, 1)},
 	}
 	got := projectLines(ps)
 	want := []string{
-		"  - a             2 .als",
-		"  - longer name  12 .als",
-		"  - mid           1 .als",
+		"  - a             2 versions",
+		"  - longer name  12 versions",
+		"  - mid           1 version",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got\n%q\nwant\n%q", got, want)
@@ -251,13 +251,27 @@ func TestBackupUnknownDirectory(t *testing.T) {
 	}
 }
 
-func TestAbletonCommandsOnlyUnderAbleton(t *testing.T) {
-	for _, name := range []string{"projects", "find-orphans", "collect"} {
-		if _, err := run(t, name); err == nil {
-			t.Errorf("%s: should not be a top-level command", name)
-		}
-		if sub, _, err := newRootCmd().Find([]string{"ableton", name}); err != nil || sub.Name() != name {
-			t.Errorf("ableton %s: not found (%v)", name, err)
+func TestNoAbletonGroup(t *testing.T) {
+	if _, err := run(t, "ableton", "projects"); err == nil {
+		t.Error("ableton group should be gone")
+	}
+}
+
+// find-orphans and collect detect the DAW from the path they're given and
+// refuse anything they don't recognise, before touching it.
+func TestUnrecognisedProject(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"find-orphans", dir},
+		{"collect", "--all", dir},
+		{"collect", filepath.Join(dir, "notes.txt")},
+	} {
+		_, err := run(t, args...)
+		if err == nil || !strings.Contains(err.Error(), "isn't a recognised") {
+			t.Errorf("%v: got %v", args, err)
 		}
 	}
 }

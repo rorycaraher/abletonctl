@@ -7,10 +7,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `studioctl` is a Go CLI for one solo producer's music files on one computer:
 backing up any number of named Directories to rclone Remotes, listing Demos
 and where they're backed up, converting rendered demos to mp3, finding peaks
-in audio files, and validating its own config file. Ableton-only tools —
+in audio files, and validating its own config file. The Project tools —
 listing Projects, finding orphaned samples, collecting external file
-references into a project (a scriptable "Collect All and Save") — live under
-`studioctl ableton`. It was called `abletonctl` until it outgrew Ableton.
+references into a Project (a scriptable "Collect All and Save") — are named
+DAW-agnostically and detect the DAW from the Project's layout; Ableton Live
+is the only one implemented. It was called `abletonctl` until it outgrew
+Ableton.
 
 - `README.md` — user-facing docs: install, configure, usage.
 - `CONTEXT.md` — domain vocabulary (Directory, Remote, Projects directory,
@@ -75,11 +77,10 @@ own file in `cmd/studioctl/` as a `newXCmd()` constructor registered in
 | File | Command(s) |
 |---|---|
 | `backup.go` | `backup [dir...] [--dry-run] [--quiet] [--yes]` (every copy runs; summary at the end) |
-| `ableton.go` | `ableton` (groups the Ableton-only commands below) |
-| `projects.go` | `ableton projects` (lists projects with their `.als` counts) |
+| `projects.go` | `projects` (lists Projects with their DAW and Version counts) |
 | `config.go` | `config check` |
-| `orphans.go` | `ableton find-orphans <project-path> [--quarantine]` |
-| `collect.go` | `ableton collect <.als>` / `ableton collect --all <dir>` |
+| `orphans.go` | `find-orphans <project-path> [--quarantine]` |
+| `collect.go` | `collect <version>` / `collect --all <project-path>` |
 | `demos.go` | `convert-demos [--dry-run]` |
 | `peaks.go` | `find-peaks <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
 | `demos_list.go` | `demos [--remote]` (lists Demos and their Location: local and each Remote) |
@@ -91,9 +92,12 @@ Conventions for the command layer:
   `RunE` rather than printing and exiting.
 - `--config` is added only to commands that read the config file, via
   `addConfigFlag`. `find-orphans` and `collect` take explicit paths instead.
-- Commands that only make sense for Ableton (they read `.als` files or
-  Live's Project layout) go under `ableton`; everything else is top-level
-  and DAW-agnostic.
+- Commands are named DAW-agnostically; there is no per-DAW command group.
+  A command that works on Projects asks `discovery` which DAW it's looking
+  at (`LoadProject`/`VersionDAW` for an explicit path, `DiscoverProjects`
+  for the projects Directory) and switches on `discovery.DAW`, returning a
+  "doesn't support … yet" error for DAWs it has no implementation for. See
+  `docs/adr/0005-detect-the-daw-from-project-layout.md`.
 - Long flags are `--double-dash` only (pflag); flags may appear before or
   after positional arguments.
 - Shell completion (`studioctl completion zsh|bash|fish|powershell`) is
@@ -123,10 +127,15 @@ files do only argument handling, orchestration, and output formatting:
   injectable `Env`, so tests need neither binary.
 
 - **`internal/discovery`** — structural filesystem scanning with no
-  exclude-lists: `DiscoverProjects` finds the direct children of a directory
-  that contain a top-level `.als` file (Ableton's auto-generated `Backup/`
-  folder is never scanned). Every other package that needs to know what a
-  "project" is depends on this one.
+  exclude-lists, and DAW detection. One `detector` per supported DAW
+  recognises its Projects by layout (Ableton: a top-level `.als` file;
+  Live's auto-generated `Backup/` folder is never scanned). `LoadProject`
+  reads one folder, `DiscoverProjects` finds the Projects among a
+  directory's direct children, `DetectDAW` takes the first one's DAW (every
+  Project in the projects Directory is assumed to share one), and
+  `VersionDAW` judges a single Version file by extension. Every other
+  package that needs to know what a "project" is depends on this one; adding
+  a DAW starts with a new entry in `detectors`.
 
 - **`internal/backup`** — turns a loaded config + optional Directory names
   into a list of `Job{Dir, LocalDir, RemoteDir}` via `BuildJobs` (one per

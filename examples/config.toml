@@ -6,7 +6,7 @@
 # parent directory - the Directory's contents land in it directly. A leading
 # "~/" in a path means your home directory.
 #
-# Two names are special: "projects" (your Ableton Projects) and "demos"
+# Two names are special: "projects" (your DAW Projects) and "demos"
 # (where demo bounces land). Commands that need them look them up by name.
 # Every other Directory is only backed up.
 

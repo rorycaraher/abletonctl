@@ -1,7 +1,7 @@
-// Command studioctl manages a single Ableton Live production workspace:
-// discovering projects, finding unreferenced samples, collecting external
-// file references into a project, converting rendered demos to mp3, and
-// backing up the projects and demos directories to rclone remotes.
+// Command studioctl manages one producer's music files: discovering
+// Projects (detecting their DAW), finding unreferenced samples, collecting
+// external file references into a Project, converting rendered demos to
+// mp3, finding peaks, and backing up named Directories to rclone remotes.
 package main
 
 import (

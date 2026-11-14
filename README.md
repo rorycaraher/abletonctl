@@ -3,22 +3,22 @@
 `studioctl` is a small personal CLI for a solo music producer's files on
 one computer: backing up any number of directories to rclone remotes,
 listing and converting rendered demos, and finding peaks in audio files.
-Tools that only make sense for Ableton Live - listing Projects, finding
-orphaned samples, a scriptable "Collect All and Save" - live under
-`studioctl ableton`.
+It also works on DAW Projects - listing them, finding orphaned samples, a
+scriptable "Collect All and Save" - detecting the DAW from each Project's
+layout. Ableton Live is the only DAW supported so far.
 
 ## Conventions
 
 - **Directory**: a named local directory the tool knows about, with any
   number of rclone remotes it's backed up to (see Configure). Most are only
   backed up; two names are special:
-- **Projects directory** (`projects`): holds every Ableton Project you want
-  `studioctl ableton` to manage. Projects are its direct children - there's
-  no grouping subdirectory.
-- **Project**: any direct child of the projects directory that contains a
-  top-level `.als` file. Folders without one (reference material, sample
-  packs, etc.) are skipped automatically - there's no exclude-list to
-  maintain.
+- **Projects directory** (`projects`): holds every Project you want
+  studioctl to manage. Projects are its direct children - there's no
+  grouping subdirectory. They're assumed to all come from the same DAW.
+- **Project**: any direct child of the projects directory that a supported
+  DAW's layout is recognised in - for Ableton Live, a top-level `.als` file.
+  Folders without one (reference material, sample packs, etc.) are skipped
+  automatically - there's no exclude-list to maintain.
 - **Demos directory** (`demos`): wherever your WIP demo bounces land. It
   doesn't need to live inside the projects directory. Only mp3 belongs here
   long-term - aiff/wav masters for finishing live elsewhere.
@@ -137,21 +137,24 @@ studioctl backup --yes
 studioctl config check
 ```
 
-### Ableton
+### Projects
+
+These detect the DAW from the Project's layout and refuse anything they
+don't recognise. Only Ableton Live is supported so far.
 
 ```sh
-# List every project discovered in the projects Directory, with how many .als
-# Versions it has.
-studioctl ableton projects
+# List every project discovered in the projects Directory, with its DAW and
+# how many Versions (.als files) each has.
+studioctl projects
 
 # Find samples that no top-level .als in a project references anymore.
-studioctl ableton find-orphans ~/Music/Projects/Song
+studioctl find-orphans ~/Music/Projects/Song
 
 # Move the ones it's confident about into Song/_unreferenced/, preserving
 # their path under Samples/. Never deletes; never touches files it's only
 # "uncertain" about (matched by filename but not by path - reopen the
 # project and check those by hand).
-studioctl ableton find-orphans ~/Music/Projects/Song --quarantine
+studioctl find-orphans ~/Music/Projects/Song --quarantine
 ```
 
 `find-orphans` only looks at top-level `.als` files - Ableton's
@@ -165,11 +168,11 @@ auto-generated `Backup/` folder is ignored, since counting old backups as
 # Never overwrites the input - always writes a new numbered .als alongside it
 # (Song.als -> Song-01.als). Pack content, Ableton's own bundled content, and
 # anything already inside the project are left alone.
-studioctl ableton collect ~/Music/Projects/Song/Song.als
+studioctl collect ~/Music/Projects/Song/Song.als
 
-# Same, for every top-level .als in a directory. Each file is independent -
+# Same, for every top-level .als in a project. Each file is independent -
 # one failing doesn't stop the rest.
-studioctl ableton collect --all ~/Music/Projects/Song
+studioctl collect --all ~/Music/Projects/Song
 ```
 
 ### Shell completion
@@ -182,7 +185,7 @@ source <(studioctl completion zsh)
 ```
 
 It completes command names, Directory names for `backup`, `--config` files (`*.toml`)
-and project directories for `ableton find-orphans`. Run `studioctl completion --help`
+and project directories for `find-orphans`. Run `studioctl completion --help`
 for the other shells.
 
 ## Development

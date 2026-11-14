@@ -104,7 +104,7 @@ func Check(path string, env Env) []Result {
 		return rs
 	}
 	if _, ok := cfg.Dir(config.Projects); !ok {
-		add(Warn, "no [dirs.%s]: `ableton projects` is unavailable", config.Projects)
+		add(Warn, "no [dirs.%s]: `projects` is unavailable", config.Projects)
 	}
 	if _, ok := cfg.Dir(config.Demos); !ok {
 		add(Warn, "no [dirs.%s]: demos and convert-demos are unavailable", config.Demos)

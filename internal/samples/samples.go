@@ -38,7 +38,7 @@ type FileResult struct {
 // references, and classifies every file found under Samples/.
 func Scan(project discovery.Project) ([]FileResult, error) {
 	refs := newSampleRefs()
-	for _, als := range project.AlsFiles {
+	for _, als := range project.Versions {
 		fileRefs, err := ExtractSampleRefs(als)
 		if err != nil {
 			return nil, err

@@ -1,6 +1,6 @@
-// Package discovery finds Ableton project folders on disk using a
-// structural convention (a top-level .als file) rather than a naming
-// exclude-list.
+// Package discovery finds Projects on disk and tells which DAW made them,
+// using structural conventions (a DAW's project file at the top level of a
+// folder) rather than a naming exclude-list.
 package discovery
 
 import (
@@ -11,16 +11,30 @@ import (
 	"strings"
 )
 
-// Project is an Ableton project folder: a directory with one or more
-// top-level .als files.
+// DAW is the program a Project belongs to.
+type DAW string
+
+const (
+	// Unknown means no supported DAW's project layout was recognised.
+	Unknown DAW = ""
+	Ableton DAW = "Ableton Live"
+)
+
+// Supported lists the DAWs discovery can recognise, for error messages.
+const Supported = "Ableton Live"
+
+// Project is a folder holding one DAW's project: one or more top-level
+// Versions.
 type Project struct {
-	// Name is the folder name without the " Project" suffix Live appends
+	// Name is the folder name, without the " Project" suffix Live appends
 	// to project folders.
 	Name string
 	Path string
-	// AlsFiles are absolute paths to the top-level .als files in this
-	// project (Ableton's auto-generated Backup/ subfolder is not scanned).
-	AlsFiles []string
+	DAW  DAW
+	// Versions are absolute paths to the project's top-level project files
+	// (for Ableton, .als files; Live's auto-generated Backup/ subfolder is
+	// not scanned).
+	Versions []string
 }
 
 const folderSuffix = " Project"
@@ -39,8 +53,53 @@ func (p Project) SamplesDir() string {
 	return filepath.Join(p.Path, "Samples")
 }
 
-// DiscoverProjects finds project folders directly under dir: any child
-// directory containing a top-level .als file. Children without one (e.g.
+// detector recognises one DAW's Projects. versions returns a folder's
+// top-level project files; a folder with none isn't that DAW's Project.
+type detector struct {
+	daw      DAW
+	versions func(dir string) ([]string, error)
+	// versionExt is the extension of a single Version file.
+	versionExt string
+}
+
+var detectors = []detector{
+	{daw: Ableton, versions: topLevelAlsFiles, versionExt: ".als"},
+}
+
+// LoadProject reads the folder at path as a Project, recognising its DAW.
+// It returns ok=false, with no error, when no supported DAW's layout is
+// there.
+func LoadProject(path string) (p Project, ok bool, err error) {
+	for _, d := range detectors {
+		versions, err := d.versions(path)
+		if err != nil {
+			return Project{}, false, err
+		}
+		if len(versions) > 0 {
+			return Project{
+				Name:     ProjectName(filepath.Base(path)),
+				Path:     path,
+				DAW:      d.daw,
+				Versions: versions,
+			}, true, nil
+		}
+	}
+	return Project{}, false, nil
+}
+
+// VersionDAW returns the DAW whose project file path is, by extension, or
+// Unknown.
+func VersionDAW(path string) DAW {
+	for _, d := range detectors {
+		if strings.EqualFold(filepath.Ext(path), d.versionExt) {
+			return d.daw
+		}
+	}
+	return Unknown
+}
+
+// DiscoverProjects finds Projects directly under dir: any child directory
+// with a supported DAW's top-level project file. Children without one (e.g.
 // reference material or sample-pack folders) are skipped.
 func DiscoverProjects(dir string) ([]Project, error) {
 	entries, err := os.ReadDir(dir)
@@ -52,19 +111,13 @@ func DiscoverProjects(dir string) ([]Project, error) {
 		if !e.IsDir() {
 			continue
 		}
-		projectPath := filepath.Join(dir, e.Name())
-		alsFiles, err := topLevelAlsFiles(projectPath)
+		p, ok, err := LoadProject(filepath.Join(dir, e.Name()))
 		if err != nil {
 			return nil, err
 		}
-		if len(alsFiles) == 0 {
-			continue
+		if ok {
+			projects = append(projects, p)
 		}
-		projects = append(projects, Project{
-			Name:     ProjectName(e.Name()),
-			Path:     projectPath,
-			AlsFiles: alsFiles,
-		})
 	}
 	sort.Slice(projects, func(i, j int) bool {
 		if projects[i].Name != projects[j].Name {
@@ -73,6 +126,17 @@ func DiscoverProjects(dir string) ([]Project, error) {
 		return projects[i].Path < projects[j].Path
 	})
 	return projects, nil
+}
+
+// DetectDAW returns the DAW of the Projects directly under dir, judged by
+// the first Project found: every Project in a Projects directory is assumed
+// to come from the same DAW. It returns Unknown if there are none.
+func DetectDAW(dir string) (DAW, error) {
+	projects, err := DiscoverProjects(dir)
+	if err != nil || len(projects) == 0 {
+		return Unknown, err
+	}
+	return projects[0].DAW, nil
 }
 
 func topLevelAlsFiles(projectPath string) ([]string, error) {

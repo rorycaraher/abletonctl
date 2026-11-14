@@ -24,7 +24,9 @@ func newRootCmd() *cobra.Command {
 		newConvertDemosCmd(),
 		newFindPeaksCmd(),
 		newConfigCmd(),
-		newAbletonCmd(),
+		newProjectsCmd(),
+		newFindOrphansCmd(),
+		newCollectCmd(),
 	)
 	return root
 }

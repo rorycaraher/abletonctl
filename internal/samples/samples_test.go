@@ -35,7 +35,7 @@ func setupProject(t *testing.T) discovery.Project {
 	return discovery.Project{
 		Name:     "Song",
 		Path:     projectPath,
-		AlsFiles: []string{filepath.Join(projectPath, "Song.als")},
+		Versions: []string{filepath.Join(projectPath, "Song.als")},
 	}
 }
 

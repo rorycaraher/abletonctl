@@ -14,7 +14,7 @@ func newFindOrphansCmd() *cobra.Command {
 	var quarantine bool
 	cmd := &cobra.Command{
 		Use:   "find-orphans <project-path>",
-		Short: "Find (and optionally quarantine) samples no .als references",
+		Short: "Find (and optionally quarantine) samples no Version of a Project references",
 		Args:  cobra.ExactArgs(1),
 		// Directories only: the argument is a project folder.
 		ValidArgsFunction: func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
@@ -34,22 +34,23 @@ func runFindOrphans(path string, quarantine bool) error {
 		return err
 	}
 
-	siblings, err := discovery.DiscoverProjects(filepath.Dir(projectPath))
+	project, ok, err := discovery.LoadProject(projectPath)
 	if err != nil {
 		return err
 	}
-	var project *discovery.Project
-	for i := range siblings {
-		if siblings[i].Path == projectPath {
-			project = &siblings[i]
-			break
-		}
+	if !ok {
+		return fmt.Errorf("%s isn't a recognised Project (supported: %s)", projectPath, discovery.Supported)
 	}
-	if project == nil {
-		return fmt.Errorf("%s does not look like an Ableton project (no top-level .als file)", projectPath)
+	switch project.DAW {
+	case discovery.Ableton:
+		return findAbletonOrphans(project, quarantine)
+	default:
+		return fmt.Errorf("find-orphans doesn't support %s Projects yet", project.DAW)
 	}
+}
 
-	results, err := samples.Scan(*project)
+func findAbletonOrphans(project discovery.Project, quarantine bool) error {
+	results, err := samples.Scan(project)
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,7 @@ func runFindOrphans(path string, quarantine bool) error {
 	fmt.Printf("\n%d orphaned files (%d bytes), %d uncertain matches\n", orphans, orphanBytes, uncertain)
 
 	if quarantine {
-		moved, err := samples.Quarantine(*project, results)
+		moved, err := samples.Quarantine(project, results)
 		if err != nil {
 			return err
 		}

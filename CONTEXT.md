@@ -2,9 +2,10 @@
 
 A personal CLI for a solo music producer's files on one computer: backing up
 any number of Directories to rclone Remotes, listing and converting demos,
-and finding peaks in rendered audio. Ableton-specific tools — discovering
+and finding peaks in rendered audio. The Project tools — discovering
 Projects, finding orphaned samples, collecting external file references into
-a Project — live under `studioctl ableton`.
+a Project — detect which DAW made a Project from its layout. Ableton Live is
+the only DAW supported so far.
 
 ## Language
 
@@ -22,9 +23,9 @@ several Remotes, or none.
 _Avoid_: Backup, mirror
 
 **Projects directory**:
-The Directory named `projects`: it holds every Ableton Project the tool
-manages. Projects are its direct children — there is no intermediate
-grouping directory.
+The Directory named `projects`: it holds every Project the tool manages.
+Projects are its direct children — there is no intermediate grouping
+directory. Every Project in it is assumed to come from the same DAW.
 _Avoid_: Artist directory, artist root, artist namespace
 
 **Demos directory**:
@@ -34,11 +35,17 @@ demo bounces may live somewhere else entirely (a synced folder, a separate
 drive).
 _Avoid_: Demos role, demos glob
 
+**DAW**:
+The program a Project belongs to, recognised from the Project's layout,
+never configured. Only Ableton Live is supported.
+_Avoid_: Host, engine
+
 **Project**:
-Any direct child of the Projects directory that contains a top-level `.als`
-file. Directories without one (reference material, sample packs, etc.) are
-skipped automatically. Only top-level `.als` files count — Ableton's
-auto-generated `Backup/` folder is never scanned. A Project's name is its
+Any direct child of the Projects directory whose layout a supported DAW
+recognises: for Ableton, a top-level `.als` file. Directories without one
+(reference material, sample packs, etc.) are skipped automatically. Only
+top-level `.als` files count — Ableton's auto-generated `Backup/` folder is
+never scanned. A Project's name is its
 folder name without the ` Project` suffix Live appends (`installations
 Project` is `installations`); the suffix is optional wherever a name is
 accepted.
@@ -58,7 +65,8 @@ never auto-quarantined; requires opening the project and checking by hand.
 ### Demos and Versions
 
 **Version**:
-A top-level `.als` file in a Project: one saved iteration of it. A Project
+A top-level project file in a Project (for Ableton, an `.als` file): one
+saved iteration of it. A Project
 has one or more Versions.
 _Avoid_: Live Set, set, revision
 
