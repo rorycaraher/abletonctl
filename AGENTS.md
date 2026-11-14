@@ -4,21 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`abletonctl` is a Go CLI for managing a **single** Ableton Live production
-workspace: listing projects, backing up the projects and demos directories to
-rclone remotes, finding orphaned samples, collecting external file
-references into a project (a scriptable "Collect All and Save"), converting
-rendered demos to mp3, and validating its own config file.
+`studioctl` is a Go CLI for one solo producer's music files on one computer:
+backing up any number of named Directories to rclone Remotes, listing Demos
+and where they're backed up, converting rendered demos to mp3, finding peaks
+in audio files, and validating its own config file. The Project tools —
+listing Projects, finding orphaned samples, collecting external file
+references into a Project (a scriptable "Collect All and Save") — are named
+DAW-agnostically and detect the DAW from the Project's layout; Ableton Live
+is the only one implemented. It was called `abletonctl` until it outgrew
+Ableton.
 
 - `README.md` — user-facing docs: install, configure, usage.
-- `CONTEXT.md` — domain vocabulary (Projects directory, Demos directory,
-  Project, Backup target, Orphan, Uncertain) and terms to avoid. Use these
-  terms in code, docs, and commit messages.
+- `CONTEXT.md` — domain vocabulary (Directory, Remote, Projects directory,
+  Demos directory, Project, Version, Demo, Location, Orphan, Uncertain, Peak)
+  and terms to avoid. Use these terms in code, docs, and commit messages.
 - `docs/adr/` — why the structure is what it is. Read
-  `0001-single-workspace-mvp.md` before reintroducing anything multi-artist:
-  the artist registry, per-artist roles, `PRODUCTION-*` grouping, the track
-  catalog CSV, and User Library backup were removed on purpose and live on a
-  separate branch.
+  `0001-single-workspace-mvp.md` before reintroducing anything multi-artist
+  (the artist registry, `PRODUCTION-*` grouping, the track catalog CSV were
+  removed on purpose), and `0004-named-directories-with-remotes.md` before
+  changing how Directories and Remotes are configured.
 - `IDEAS.md` — deliberately-deferred features.
 
 ## Commands
@@ -26,7 +30,7 @@ rendered demos to mp3, and validating its own config file.
 ```sh
 mise install        # pinned toolchain: go, golangci-lint, pre-commit, gitleaks, actionlint
 mise run check      # what CI runs: gofmt check, go vet, golangci-lint, go test
-mise run build      # go build -o abletonctl ./cmd/abletonctl
+mise run build      # go build -o studioctl ./cmd/studioctl
 mise run hooks      # install the pre-commit hook (once per clone)
 ```
 
@@ -66,19 +70,20 @@ dependency.
 
 Single-binary CLI built on [cobra](https://github.com/spf13/cobra). `main.go`
 only declares `version` and runs `newRootCmd()` (`root.go`), printing any
-returned error as `abletonctl: <err>` and exiting 1. Each command lives in its
-own file in `cmd/abletonctl/` as a `newXCmd()` constructor registered in
+returned error as `studioctl: <err>` and exiting 1. Each command lives in its
+own file in `cmd/studioctl/` as a `newXCmd()` constructor registered in
 `newRootCmd()`:
 
 | File | Command(s) |
 |---|---|
-| `backup.go` | `backup [--target projects\|demos\|ableton] [--dry-run] [--quiet] [--yes]` |
-| `projects.go` | `projects [--remote]` (lists projects with `.als` and linked-Demo counts) |
+| `backup.go` | `backup [dir...] [--dry-run] [--quiet] [--yes]` (every copy runs; summary at the end) |
+| `projects.go` | `projects` (lists Projects with their DAW and Version counts) |
 | `config.go` | `config check` |
 | `orphans.go` | `find-orphans <project-path> [--quarantine]` |
-| `collect.go` | `collect <.als>` / `collect --all <dir>` |
+| `collect.go` | `collect <version>` / `collect --all <project-path>` |
 | `demos.go` | `convert-demos [--dry-run]` |
-| `demos_list.go` | `demos [--project <path>] [--remote]` (Demo to Version links) |
+| `peaks.go` | `find-peaks <wav\|aiff> [--threshold dB] [--bpm n] [--timesig N/D]` |
+| `demos_list.go` | `demos [--remote]` (lists Demos and their Location: local and each Remote) |
 | `style.go` | lipgloss styles (no command) |
 
 Conventions for the command layer:
@@ -87,9 +92,15 @@ Conventions for the command layer:
   `RunE` rather than printing and exiting.
 - `--config` is added only to commands that read the config file, via
   `addConfigFlag`. `find-orphans` and `collect` take explicit paths instead.
+- Commands are named DAW-agnostically; there is no per-DAW command group.
+  A command that works on Projects asks `discovery` which DAW it's looking
+  at (`LoadProject`/`VersionDAW` for an explicit path, `DiscoverProjects`
+  for the projects Directory) and switches on `discovery.DAW`, returning a
+  "doesn't support … yet" error for DAWs it has no implementation for. See
+  `docs/adr/0005-detect-the-daw-from-project-layout.md`.
 - Long flags are `--double-dash` only (pflag); flags may appear before or
   after positional arguments.
-- Shell completion (`abletonctl completion zsh|bash|fish|powershell`) is
+- Shell completion (`studioctl completion zsh|bash|fish|powershell`) is
   cobra's built-in. Give flags with a fixed value set a
   `RegisterFlagCompletionFunc` and path arguments a `ValidArgsFunction`.
 - Styling (lipgloss) degrades to plain text when stdout isn't a terminal or
@@ -98,34 +109,41 @@ Conventions for the command layer:
 All actual logic lives in `internal/`, one package per concern; the command
 files do only argument handling, orchestration, and output formatting:
 
-- **`internal/config`** — loads the single flat config file
-  (`~/.config/abletonctl/config.toml`): `projects_dir`, `demos_dir`, `ableton_dir`
-  (User Library), and a rclone remote for each (`projects_remote`,
-  `demos_remote`, `ableton_remote`). Pure data
-  loading. See `examples/config.toml`.
+- **`internal/config`** — loads the config file
+  (`~/.config/studioctl/config.toml`): any number of named Directories
+  (`[dirs.<name>]`), each a `path` and a list of rclone `remotes`. The names
+  `projects` and `demos` are reserved (`config.Projects`/`config.Demos`) and
+  looked up by commands; every other Directory is only backed up. `Names()`
+  keeps file order; a leading `~/` in a path is expanded. See
+  `examples/config.toml` and `docs/adr/0004-named-directories-with-remotes.md`.
 
-- **`internal/configcheck`** — backs `config check`. Re-decodes the config
-  with TOML metadata to flag unknown keys (typos), and checks that the
-  directories exist, remotes have a `name:` prefix and exist in
-  `rclone listremotes`, and `rclone`/`ffmpeg` are on `PATH`. Returns a list
-  of `ok`/`warn`/`FAIL` results rather than stopping at the first problem.
-  Machine lookups go through an injectable `Env`, so tests need neither
-  binary.
+- **`internal/configcheck`** — backs `config check`. Flags unknown keys at
+  both levels (typos), checks each Directory's path exists, remotes have a
+  `name:` prefix and exist in `rclone listremotes`, and `rclone`/`ffmpeg` are
+  on `PATH`. Fails on a Remote shared by two Directories; warns on nested
+  Remotes or paths, a missing `projects`/`demos`, and a non-reserved
+  Directory with no Remotes. Returns a list of `ok`/`warn`/`FAIL` results
+  rather than stopping at the first problem. Machine lookups go through an
+  injectable `Env`, so tests need neither binary.
 
 - **`internal/discovery`** — structural filesystem scanning with no
-  exclude-lists: `DiscoverProjects` finds the direct children of a directory
-  that contain a top-level `.als` file (Ableton's auto-generated `Backup/`
-  folder is never scanned). Every other package that needs to know what a
-  "project" is depends on this one.
+  exclude-lists, and DAW detection. One `detector` per supported DAW
+  recognises its Projects by layout (Ableton: a top-level `.als` file;
+  Live's auto-generated `Backup/` folder is never scanned). `LoadProject`
+  reads one folder, `DiscoverProjects` finds the Projects among a
+  directory's direct children, `DetectDAW` takes the first one's DAW (every
+  Project in the projects Directory is assumed to share one), and
+  `VersionDAW` judges a single Version file by extension. Every other
+  package that needs to know what a "project" is depends on this one; adding
+  a DAW starts with a new entry in `detectors`.
 
-- **`internal/backup`** — turns a loaded config + optional target filter
-  into a list of `Job{Target, LocalDir, RemoteDir}` via `BuildJobs`, then runs
-  each through `rclone copy` (never `sync` — copy only adds/updates on the
-  remote, so a local mistake can't destroy the remote copy too). There are
-  exactly three fixed targets, projects, demos and ableton; a target missing its
-  directory or remote is skipped, or an error if explicitly requested.
-  `ListArgs`/`ListRemote` list a remote's files (`rclone lsf`, read-only) for
-  `demos --remote`.
+- **`internal/backup`** — turns a loaded config + optional Directory names
+  into a list of `Job{Dir, LocalDir, RemoteDir}` via `BuildJobs` (one per
+  Directory per Remote), then runs each through `rclone copy` (never `sync`
+  — copy only adds/updates on the remote, so a local mistake can't destroy
+  the remote copy too). A Directory with no Remotes is skipped, or an error
+  if named explicitly. `ListArgs`/`ListRemote` list a remote's files
+  (`rclone lsf`, read-only) for `demos --remote`.
 
 - **`internal/samples`** — orphan-sample detection. `als.go` streams the
   gzipped XML of an `.als` file token-by-token (not a fixed-schema
@@ -151,24 +169,29 @@ files do only argument handling, orchestration, and output formatting:
   (`LivePackId` set) and Ableton's own bundled content (path contains
   `.app/Contents/`) are always left alone.
 
-- **`internal/demolink`** — relates Demos to Versions by filename, purely
-  from names (nothing stored). `Parse` splits a Demo name on the first `__`;
-  `GroupPaths` groups relative file paths into Demos (audio `.wav .aiff .aif
-  .mp3` only; a `.wav`/`.mp3` pair is one Demo; `.asd` ignored), `ListDemos`
-  feeds it from a local walk, and `Merge` combines local and remote Demos,
-  tagging each `Location` (`Local`/`Remote`/`Both`, by name only, never by
-  content). The remote listing itself comes from `backup.ListRemote`, so this
-  package never shells out. `Resolve`
-  indexes every Project's `.als` slugs (cut at the first `__`, so
-  `song-03__alt.als` is indexed as `song-03`) and classifies each Demo as `Linked`,
-  `Ambiguous` (slug in 2+ Projects), `Dangling` (has `__`, no match) or
-  `Unlinked`. Matching is exact and case-sensitive, never prefix-based.
-  See `docs/adr/0003-demos-link-to-versions-by-filename.md`.
+- **`internal/demolist`** — finds Demos by name. `GroupPaths` groups
+  relative file paths into Demos (audio `.wav .aiff .aif .mp3` only; a
+  `.wav`/`.mp3` pair is one Demo; `.asd` ignored), `ListDemos` feeds it from
+  a local walk, and `Merge` combines the lists from any number of places
+  (local, then each Remote), so a Demo's `Location` is every place it was
+  found — by name only, never by content. The remote listing itself
+  comes from `backup.ListRemote`, so this package never shells out.
+  Demo-to-Version linking was removed for now; see
+  `docs/adr/0003-demos-link-to-versions-by-filename.md` (parked).
 
 - **`internal/demos`** — converts `aiff`/`wav` under the demos directory to
   320k CBR mp3 via `ffmpeg` and deletes the original **only** after
   verifying the output exists and is non-empty (`Convert` then `os.Remove`
   in `ConvertAndCleanup`); a failed conversion never triggers a delete.
+
+- **`internal/peaks`** — backs `find-peaks`. Decodes uncompressed WAV
+  (PCM/float, incl. `WAVE_FORMAT_EXTENSIBLE`) and AIFF/AIFF-C (`NONE`,
+  `twos`, `sowt`, `fl32`, `fl64`) in pure Go, streaming, with no `ffmpeg`
+  dependency; the container is detected by magic bytes, and chunks may come
+  in any order. A Peak is one excursion over the threshold (max across
+  channels): crossings within `Hold` (100ms) merge into one, reported at
+  its loudest sample. `Bar` treats BPM as quarter notes per minute, as Live
+  does, so a 6/8 bar is three quarter notes.
 
 ## Conventions worth preserving when extending
 
@@ -183,9 +206,10 @@ files do only argument handling, orchestration, and output formatting:
   deletes a source file after verifying its converted replacement; `collect`
   never overwrites the input `.als`. Match this bias — prefer "leave it and
   report" over "delete/overwrite" — for any new mutating command.
-- Keep the config surface small. One flat file, two directories, two
-  remotes; don't add named roles or registries back without revisiting
-  `docs/adr/0001-single-workspace-mvp.md`.
+- Keep the config surface small: one file of named Directories, each a
+  path and its Remotes, with `projects` and `demos` as the only reserved
+  names. Don't add kinds, roles or registries without revisiting
+  `docs/adr/0004-named-directories-with-remotes.md` (and `0001`).
 - Each `internal/` package is independently testable against fixture data
   (see `internal/*/*_test.go`) without needing `rclone`/`ffmpeg` installed;
   keep new packages structured so their core logic doesn't require shelling

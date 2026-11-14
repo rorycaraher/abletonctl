@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rorycaraher/abletonctl/internal/discovery"
+	"github.com/rorycaraher/studioctl/internal/discovery"
 )
 
 func writeSample(t *testing.T, path string, size int) {
@@ -35,7 +35,7 @@ func setupProject(t *testing.T) discovery.Project {
 	return discovery.Project{
 		Name:     "Song",
 		Path:     projectPath,
-		AlsFiles: []string{filepath.Join(projectPath, "Song.als")},
+		Versions: []string{filepath.Join(projectPath, "Song.als")},
 	}
 }
 

@@ -42,8 +42,8 @@ func TestDiscoverProjects_DetectsViaTopLevelAls(t *testing.T) {
 	if projects[0].Name != "Track One" {
 		t.Fatalf("got project %q, want Track One", projects[0].Name)
 	}
-	if len(projects[0].AlsFiles) != 1 {
-		t.Fatalf("got %d als files, want 1", len(projects[0].AlsFiles))
+	if len(projects[0].Versions) != 1 {
+		t.Fatalf("got %d als files, want 1", len(projects[0].Versions))
 	}
 }
 
@@ -56,7 +56,7 @@ func TestDiscoverProjects_IgnoresBackupFolderAls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(projects) != 1 || len(projects[0].AlsFiles) != 1 {
+	if len(projects) != 1 || len(projects[0].Versions) != 1 {
 		t.Fatalf("expected exactly one top-level als, got %+v", projects)
 	}
 }
@@ -67,5 +67,57 @@ func TestProjectName(t *testing.T) {
 	}
 	if got := ProjectName("Track One"); got != "Track One" {
 		t.Errorf("ProjectName = %q", got)
+	}
+}
+
+func TestLoadProject(t *testing.T) {
+	prod := t.TempDir()
+	mustTouch(t, filepath.Join(prod, "Song Project", "Song.als"))
+	mustTouch(t, filepath.Join(prod, "Notes", "notes.txt"))
+
+	p, ok, err := LoadProject(filepath.Join(prod, "Song Project"))
+	if err != nil || !ok {
+		t.Fatalf("LoadProject: ok=%v err=%v", ok, err)
+	}
+	if p.DAW != Ableton || p.Name != "Song" || len(p.Versions) != 1 {
+		t.Errorf("got %+v", p)
+	}
+
+	if _, ok, err := LoadProject(filepath.Join(prod, "Notes")); ok || err != nil {
+		t.Errorf("Notes: ok=%v err=%v, want not a project", ok, err)
+	}
+	if _, _, err := LoadProject(filepath.Join(prod, "missing")); err == nil {
+		t.Error("missing folder: want error")
+	}
+}
+
+func TestDetectDAW(t *testing.T) {
+	prod := t.TempDir()
+	mustTouch(t, filepath.Join(prod, "Reference", "notes.txt"))
+	if got, err := DetectDAW(prod); err != nil || got != Unknown {
+		t.Errorf("no projects: got %q, %v; want Unknown", got, err)
+	}
+
+	mustTouch(t, filepath.Join(prod, "Song", "Song.als"))
+	if got, err := DetectDAW(prod); err != nil || got != Ableton {
+		t.Errorf("got %q, %v; want Ableton", got, err)
+	}
+
+	if _, err := DetectDAW(filepath.Join(prod, "missing")); err == nil {
+		t.Error("missing dir: want error")
+	}
+}
+
+func TestVersionDAW(t *testing.T) {
+	for path, want := range map[string]DAW{
+		"/p/Song.als":    Ableton,
+		"/p/Song.ALS":    Ableton,
+		"/p/Song.wav":    Unknown,
+		"/p/Song":        Unknown,
+		"/p/Song.logicx": Unknown,
+	} {
+		if got := VersionDAW(path); got != want {
+			t.Errorf("VersionDAW(%q) = %q, want %q", path, got, want)
+		}
 	}
 }

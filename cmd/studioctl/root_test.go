@@ -1,0 +1,277 @@
+package main
+
+import (
+	"bytes"
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+
+	"github.com/spf13/cobra"
+
+	"github.com/rorycaraher/studioctl/internal/backup"
+	"github.com/rorycaraher/studioctl/internal/demolist"
+	"github.com/rorycaraher/studioctl/internal/discovery"
+)
+
+func run(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+	root := newRootCmd()
+	var out bytes.Buffer
+	root.SetOut(&out)
+	root.SetErr(&out)
+	root.SetArgs(args)
+	err := root.Execute()
+	return out.String(), err
+}
+
+func TestUnknownCommand(t *testing.T) {
+	if _, err := run(t, "bogus"); err == nil {
+		t.Fatal("want error for unknown command")
+	}
+}
+
+func TestArgValidation(t *testing.T) {
+	for _, args := range [][]string{
+		{"find-orphans"},
+		{"find-orphans", "a", "b"},
+		{"collect"},
+		{"collect", "a", "b"},
+		{"projects", "extra"},
+		{"demos", "extra"},
+		{"config", "check", "extra"},
+	} {
+		if _, err := run(t, args...); err == nil {
+			t.Errorf("%v: want arg error", args)
+		}
+	}
+}
+
+// Flags may come before or after the positional argument; this is the
+// reason the old CLI parsed find-orphans/collect by hand.
+func TestInterspersedFlags(t *testing.T) {
+	for _, tc := range []struct {
+		cmd, flag string
+	}{{"find-orphans", "quarantine"}, {"collect", "all"}} {
+		for _, args := range [][]string{
+			{tc.cmd, "dir", "--" + tc.flag},
+			{tc.cmd, "--" + tc.flag, "dir"},
+		} {
+			root := newRootCmd()
+			sub, _, err := root.Find([]string{tc.cmd})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var gotArg string
+			var gotFlag bool
+			sub.RunE = func(c *cobra.Command, a []string) error {
+				gotArg = a[0]
+				gotFlag, _ = c.Flags().GetBool(tc.flag)
+				return nil
+			}
+			root.SetArgs(args)
+			if err := root.Execute(); err != nil {
+				t.Fatalf("%v: %v", args, err)
+			}
+			if gotArg != "dir" || !gotFlag {
+				t.Errorf("%v: arg=%q flag=%v", args, gotArg, gotFlag)
+			}
+		}
+	}
+}
+
+func TestConfigWithoutSubcommandShowsHelp(t *testing.T) {
+	out, err := run(t, "config")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "check") {
+		t.Fatalf("help should list check, got:\n%s", out)
+	}
+}
+
+func TestEveryCommandHasDescription(t *testing.T) {
+	var walk func(c *cobra.Command)
+	walk = func(c *cobra.Command) {
+		if c.Short == "" {
+			t.Errorf("%s has no Short description", c.CommandPath())
+		}
+		for _, sub := range c.Commands() {
+			walk(sub)
+		}
+	}
+	walk(newRootCmd())
+}
+
+func TestZshCompletionParses(t *testing.T) {
+	out, err := run(t, "completion", "zsh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "#compdef studioctl") {
+		t.Fatalf("unexpected completion output:\n%.200s", out)
+	}
+	zsh, err := exec.LookPath("zsh")
+	if err != nil {
+		t.Skip("zsh not installed")
+	}
+	p := filepath.Join(t.TempDir(), "_studioctl")
+	if err := os.WriteFile(p, []byte(out), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := exec.Command(zsh, "-n", p).CombinedOutput(); err != nil {
+		t.Fatalf("zsh -n: %v\n%s", err, b)
+	}
+}
+
+func TestProjectLines(t *testing.T) {
+	ps := []discovery.Project{
+		{Name: "a", Path: "/p/a", Versions: make([]string, 2)},
+		{Name: "longer name", Path: "/p/l", Versions: make([]string, 12)},
+		{Name: "mid", Path: "/p/m", Versions: make([]string, 1)},
+	}
+	got := projectLines(ps)
+	want := []string{
+		"  - a             2 versions",
+		"  - longer name  12 versions",
+		"  - mid           1 version",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got\n%q\nwant\n%q", got, want)
+	}
+
+}
+
+func TestWriteDemos(t *testing.T) {
+	demos := []demolist.Demo{
+		{Name: "song-01__x", Formats: []string{"mp3", "wav"}, Location: []string{"local", "r2:b/demos", "gdrive:demos"}},
+		{Name: "Untitled", Dir: "sub", Formats: []string{"wav"}, Location: []string{"local"}},
+		{Name: "gone__x", Formats: []string{"mp3"}, Location: []string{"r2:b/demos"}},
+	}
+
+	var local bytes.Buffer
+	writeDemos(&local, demos, nil)
+	want := "  song-01__x [mp3,wav]\n  sub/Untitled [wav]\n  gone__x [mp3]\n\n3 demos\n"
+	if local.String() != want {
+		t.Errorf("got:\n%s\nwant:\n%s", local.String(), want)
+	}
+
+	var remote bytes.Buffer
+	writeDemos(&remote, demos, []string{"r2:b/demos", "gdrive:demos"})
+	want = "" +
+		"  local r2 gdrive song-01__x [mp3,wav]\n" +
+		"  local ·  ·      sub/Untitled [wav]\n" +
+		"  ·     r2 ·      gone__x [mp3]\n" +
+		"\n3 demos\n" +
+		"2 local, 2 r2, 1 gdrive (by name)\n" +
+		"2 not on every remote\n"
+	if remote.String() != want {
+		t.Errorf("got:\n%s\nwant:\n%s", remote.String(), want)
+	}
+}
+
+func TestRemoteLabels(t *testing.T) {
+	got := remoteLabels([]string{"r2:a/demos", "gdrive:demos", "r2:b/demos"})
+	want := []string{"r2:a/demos", "gdrive", "r2:b/demos"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %v want %v", got, want)
+	}
+}
+
+func TestDemosRemoteWithoutRemotes(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfg, []byte("[dirs.demos]\npath = \""+dir+"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := run(t, "demos", "--remote", "--config", cfg)
+	if err == nil || !strings.Contains(err.Error(), "dirs.demos has no remotes") {
+		t.Errorf("demos --remote without remotes: got %v", err)
+	}
+}
+
+func TestDemosArgValidation(t *testing.T) {
+	if _, err := run(t, "demos", "extra"); err == nil {
+		t.Error("want arg error")
+	}
+}
+
+func TestWriteBackupSummary(t *testing.T) {
+	results := []backupResult{
+		{job: backup.Job{Dir: "projects", RemoteDir: "r2:b/projects"}},
+		{job: backup.Job{Dir: "projects", RemoteDir: "nas:music/projects"}, err: errors.New("exit status 1")},
+		{job: backup.Job{Dir: "demos", RemoteDir: "gdrive:demos"}},
+	}
+	var out bytes.Buffer
+	err := writeBackupSummary(&out, results)
+	if err == nil || err.Error() != "1 of 3 copies failed" {
+		t.Fatalf("err = %v", err)
+	}
+	for _, want := range []string{
+		"  ok    [projects] -> r2:b/projects\n",
+		"  FAIL  [projects] -> nas:music/projects: exit status 1\n",
+		"  ok    [demos] -> gdrive:demos\n",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q in:\n%s", want, out.String())
+		}
+	}
+	if err := writeBackupSummary(&bytes.Buffer{}, results[:1]); err != nil {
+		t.Fatalf("all ok: %v", err)
+	}
+}
+
+func TestBackupCompletesDirectoryNames(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfg, []byte("[dirs.projects]\npath = \"/p\"\n[dirs.demos]\npath = \"/d\"\n[dirs.user-library]\npath = \"/u\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, err := run(t, "__complete", "backup", "--config", cfg, "demos", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(out, "projects\nuser-library\n:4\n") {
+		t.Fatalf("completion = %q", out)
+	}
+}
+
+func TestBackupUnknownDirectory(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "config.toml")
+	if err := os.WriteFile(cfg, []byte("[dirs.demos]\npath = \"/d\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := run(t, "backup", "--config", cfg, "--dry-run", "nope")
+	if err == nil || !strings.Contains(err.Error(), "no [dirs.nope]") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestNoAbletonGroup(t *testing.T) {
+	if _, err := run(t, "ableton", "projects"); err == nil {
+		t.Error("ableton group should be gone")
+	}
+}
+
+// find-orphans and collect detect the DAW from the path they're given and
+// refuse anything they don't recognise, before touching it.
+func TestUnrecognisedProject(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "notes.txt"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"find-orphans", dir},
+		{"collect", "--all", dir},
+		{"collect", filepath.Join(dir, "notes.txt")},
+	} {
+		_, err := run(t, args...)
+		if err == nil || !strings.Contains(err.Error(), "isn't a recognised") {
+			t.Errorf("%v: got %v", args, err)
+		}
+	}
+}

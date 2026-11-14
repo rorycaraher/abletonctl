@@ -1,6 +1,6 @@
 # Backlog
 
-Ideas raised while designing `abletonctl` but deliberately left out of the
+Ideas raised while designing `studioctl` (then `abletonctl`) but deliberately left out of the
 first build, to keep it to three pillars: namespace/project discovery,
 backup, and sample-orphan finding.
 
@@ -9,7 +9,7 @@ backup, and sample-orphan finding.
   projects - candidates for a shared sample library instead of N copies.
 - **Disk usage / project size report.** Per-project and per-namespace size
   breakdown, useful for deciding what to archive off the primary disk.
-- **Automated scheduling.** A `launchd` plist to run `abletonctl backup`
+- **Automated scheduling.** A `launchd` plist to run `studioctl backup`
   daily, plus a `status` subcommand that records/reports last-successful
   backup time per role, so a silently broken schedule is visible at a
   glance rather than discovered at restore time.
@@ -69,7 +69,7 @@ backup, and sample-orphan finding.
   than requiring a manual glance at a timestamp to notice one.
 - **Golden template pipeline.** Scaffold a new project from a registered
   Ableton template (e.g. the User Library's `Templates/` folder) and
-  register it in one step - `abletonctl new <name> --template X` - so
+  register it in one step - `studioctl new <name> --template X` - so
   every project starts from a known-good baseline instead of drifting
   from whatever the last project happened to look like.
 - **Superseded-project marking.** Retitle (see `docs/adr/0002`) leaves the

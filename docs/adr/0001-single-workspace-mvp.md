@@ -1,3 +1,11 @@
+---
+status: partly superseded by ADR-0004
+---
+
+> The "exactly two fixed backup targets, no named backup roles" decision is
+> replaced by [0004](0004-named-directories-with-remotes.md). Everything else
+> here still applies.
+
 # Strip down to a single-workspace MVP
 
 The tool launched as a "multi-artist Ableton Live production workspace"

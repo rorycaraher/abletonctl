@@ -1,37 +1,40 @@
-# abletonctl
+# studioctl
 
-`abletonctl` is a small CLI for managing a single Ableton Live production
-workspace: discovering projects, finding orphaned samples,
-collecting external file references into a project
-(a scriptable "Collect All and Save"), converting rendered
-demos to mp3, and backing up all projects and demos to configurable rclone remotes.
+`studioctl` is a small personal CLI for a solo music producer's files on
+one computer: backing up any number of directories to rclone remotes,
+listing and converting rendered demos, and finding peaks in audio files.
+It also works on DAW Projects - listing them, finding orphaned samples, a
+scriptable "Collect All and Save" - detecting the DAW from each Project's
+layout. Ableton Live is the only DAW supported so far.
 
 ## Conventions
 
-- **Projects directory**: the directory containing every Ableton Project
-  you want this tool to manage. Configured once, directly - there's no
-  registry, no name, no grouping subdirectory. Projects are its direct
-  children.
-- **Project**: any direct child of the projects directory that contains a
-  top-level `.als` file. Folders without one (reference material, sample
-  packs, etc.) are skipped automatically - there's no exclude-list to
-  maintain.
-- **Demos directory**: wherever your WIP demo bounces land. Configured
-  independently of the projects directory - it doesn't need to live inside
-  it. Only mp3 belongs here long-term - aiff/wav masters for finishing live
-  elsewhere. `convert-demos` (below) enforces that.
+- **Directory**: a named local directory the tool knows about, with any
+  number of rclone remotes it's backed up to (see Configure). Most are only
+  backed up; two names are special:
+- **Projects directory** (`projects`): holds every Project you want
+  studioctl to manage. Projects are its direct children - there's no
+  grouping subdirectory. They're assumed to all come from the same DAW.
+- **Project**: any direct child of the projects directory that a supported
+  DAW's layout is recognised in - for Ableton Live, a top-level `.als` file.
+  Folders without one (reference material, sample packs, etc.) are skipped
+  automatically - there's no exclude-list to maintain.
+- **Demos directory** (`demos`): wherever your WIP demo bounces land. It
+  doesn't need to live inside the projects directory. Only mp3 belongs here
+  long-term - aiff/wav masters for finishing live elsewhere.
+  `convert-demos` (below) enforces that.
 
 ## Install
 
 Download the archive for your OS/arch from the
-[latest release](https://github.com/rorycaraher/abletonctl/releases/latest),
-extract it, and put the `abletonctl` binary on your `PATH`:
+[latest release](https://github.com/rorycaraher/studioctl/releases/latest),
+extract it, and put the `studioctl` binary on your `PATH`:
 
 ```sh
 # macOS (Apple Silicon), for example:
-curl -LO https://github.com/rorycaraher/abletonctl/releases/latest/download/abletonctl_Darwin_arm64.tar.gz
-tar -xzf abletonctl_Darwin_arm64.tar.gz abletonctl
-mv abletonctl /usr/local/bin/   # or anywhere on your PATH
+curl -LO https://github.com/rorycaraher/studioctl/releases/latest/download/studioctl_Darwin_arm64.tar.gz
+tar -xzf studioctl_Darwin_arm64.tar.gz studioctl
+mv studioctl /usr/local/bin/   # or anywhere on your PATH
 ```
 
 Other builds on the releases page: `Darwin_x86_64`, `Linux_x86_64`,
@@ -40,8 +43,8 @@ Other builds on the releases page: `Darwin_x86_64`, `Linux_x86_64`,
 Or build from source:
 
 ```sh
-go build -o abletonctl ./cmd/abletonctl
-mv abletonctl /usr/local/bin/
+go build -o studioctl ./cmd/studioctl
+mv studioctl /usr/local/bin/
 ```
 
 Requires the `rclone` binary on your `PATH` for the `backup` command, with
@@ -50,76 +53,108 @@ Requires `ffmpeg` on your `PATH` for `convert-demos`.
 
 ## Configure
 
-A single config file at `~/.config/abletonctl/config.toml`. See
+A single config file at `~/.config/studioctl/config.toml`. See
 `examples/config.toml`.
 
 ```toml
-projects_dir = "/path/to/your/projects"
-demos_dir = "/path/to/your/demos"
+[dirs.projects]
+path = "~/Music/Projects"
+remotes = ["r2:my-bucket/projects", "nas:music/projects"]
 
-projects_remote = "r2:my-bucket/projects"
-demos_remote = "gdrive:my-demos"
+[dirs.demos]
+path = "~/Music/Demos"
+remotes = ["gdrive:my-demos"]
 
-# Optional: the Ableton User Library.
-ableton_dir = "/path/to/your/User Library"
-ableton_remote = "r2:my-bucket/user-library"
+[dirs.user-library]
+path = "~/Music/Ableton/User Library"
+remotes = ["r2:my-bucket/user-library"]
 ```
+
+Each `[dirs.<name>]` entry is a **Directory**: a local `path` and any number
+of rclone `remotes` it's backed up to. Two names are special - `projects`
+and `demos` - and commands that need them look them up by name; every other
+Directory is only backed up. A leading `~/` in a path is your home
+directory.
 
 Backups always use `rclone copy` (never `sync`) - they only add/update files
 on the remote, they never delete from it. A local mistake can't take out
 your only backup copy too, at the cost of the remote potentially
 accumulating files you've since removed or renamed locally. Each remote is
-the exact destination - `projects_dir`'s contents land there directly, with
+the exact destination - the Directory's contents land there directly, with
 no extra subfolder.
 
 ## Usage
 
 ```sh
-# List every project discovered under projects_dir, with how many .als
-# Versions it has and how many Demos link to it (see "Linking Demos to
-# Versions" below).
-abletonctl projects
+# List every Demo in the demos Directory. A .wav and .mp3 with the same name are
+# one Demo.
+studioctl demos
 
-# List every Demo under demos_dir and which Version it links to.
-abletonctl demos
-abletonctl demos --project ~/Music/Projects/Song
+# Include the Demos on each of the demos Directory's remotes too (read-only
+# rclone listings, so it needs rclone and network access). Each Demo shows
+# where it was found - local, and each remote by its rclone name - with "·"
+# where it's missing, so a Demo that didn't make it to one remote stands out.
+# Decided by name only: being in two places doesn't mean the files match.
+studioctl demos --remote
 
-# Include the Demos on demos_remote too (lists the remote with rclone, so it
-# needs rclone and network access). Each Demo is tagged local, remote or both.
-abletonctl demos --remote
-
-# Same for the Demo counts in the project list.
-abletonctl projects --remote
-
-# Convert every aiff/wav under demos_dir to a 320k mp3, then permanently
+# Convert every aiff/wav in the demos Directory to a 320k mp3, then permanently
 # delete the original (and its Ableton .asd analysis file) once the
 # conversion is verified to have succeeded. A
 # failed conversion never deletes its source - it's reported and left in
 # place for you to deal with by hand.
-abletonctl convert-demos
-abletonctl convert-demos --dry-run
+studioctl convert-demos
+studioctl convert-demos --dry-run
 
-# Back up both projects_dir and demos_dir.
-abletonctl backup
+# List where a wav/aiff file goes over -6 dBFS, as HH:MM:SS.mmm. Crossings
+# less than 100ms apart are one peak, reported at its loudest sample.
+studioctl find-peaks mix.wav
+studioctl find-peaks mix.wav --threshold -1
 
-# Narrow to one target, and preview without transferring.
-abletonctl backup --target demos --dry-run
+# Show the bar each peak falls in too. Assumes the file starts at bar 1;
+# --bpm is quarter notes per minute, as Live shows it. 4/4 unless --timesig.
+studioctl find-peaks mix.wav --bpm 124
+studioctl find-peaks mix.aif --bpm 90 --timesig 6/8
+
+# Back up every Directory to each of its remotes. Every copy runs even if
+# an earlier one fails (an unreachable remote, say); a summary at the end
+# lists each result, and the exit status is non-zero if any copy failed.
+studioctl backup
+
+# Only some Directories, and preview without transferring.
+studioctl backup demos user-library --dry-run
 
 # Each copied file is listed by default; --quiet (-q) suppresses that.
-abletonctl backup --quiet
+studioctl backup --quiet
 
 # A real (non-dry-run) backup asks for confirmation first; --yes skips it,
 # and is required when stdin isn't a terminal (cron, scripts).
-abletonctl backup --yes
+studioctl backup --yes
+```
+
+```sh
+# Check the config file: parses, no unknown keys, directories exist, rclone
+# and its remotes are set up, ffmpeg is on PATH. Exits non-zero on failure.
+studioctl config check
+```
+
+### Projects
+
+These detect the DAW from the Project's layout and refuse anything they
+don't recognise. Only Ableton Live is supported so far.
+
+```sh
+# List every project discovered in the projects Directory, with its DAW and
+# how many Versions (.als files) each has.
+studioctl projects
 
 # Find samples that no top-level .als in a project references anymore.
-abletonctl find-orphans ~/Music/Projects/Song
+studioctl find-orphans ~/Music/Projects/Song
 
 # Move the ones it's confident about into Song/_unreferenced/, preserving
 # their path under Samples/. Never deletes; never touches files it's only
 # "uncertain" about (matched by filename but not by path - reopen the
 # project and check those by hand).
-abletonctl find-orphans ~/Music/Projects/Song --quarantine
+studioctl find-orphans ~/Music/Projects/Song --quarantine
 ```
 
 `find-orphans` only looks at top-level `.als` files - Ableton's
@@ -133,52 +168,12 @@ auto-generated `Backup/` folder is ignored, since counting old backups as
 # Never overwrites the input - always writes a new numbered .als alongside it
 # (Song.als -> Song-01.als). Pack content, Ableton's own bundled content, and
 # anything already inside the project are left alone.
-abletonctl collect ~/Music/Projects/Song/Song.als
+studioctl collect ~/Music/Projects/Song/Song.als
 
-# Same, for every top-level .als in a directory. Each file is independent -
+# Same, for every top-level .als in a project. Each file is independent -
 # one failing doesn't stop the rest.
-abletonctl collect --all ~/Music/Projects/Song
+studioctl collect --all ~/Music/Projects/Song
 ```
-
-```sh
-# Check the config file: parses, no unknown keys, directories exist, rclone
-# and its remotes are set up, ffmpeg is on PATH. Exits non-zero on failure.
-abletonctl config check
-```
-
-### Linking Demos to Versions
-
-A **Version** is a top-level `.als` file in a Project, and its **version
-slug** is the file name without `.als`. A Demo links to a Version by its
-name alone - when you export a render, name it either exactly the slug, or
-the slug and a descriptor joined by two underscores:
-
-```
-bell-04-2026-02.wav                  # Ableton's default export name
-bell-04-2026-02__soft-pad.wav        # slug __ descriptor
-```
-
-Matching is exact and case-sensitive (never a prefix guess), so `bell-04`
-and `bell-04-2026` don't get confused. `abletonctl demos` reports each Demo
-as:
-
-| Status | Meaning |
-|---|---|
-| `linked` | the slug matches exactly one Version |
-| `ambiguous` | the slug exists in more than one Project (e.g. `Untitled`); linked to none |
-| `dangling` | the name has `__` but no Version has that slug (the `.als` was renamed or deleted) |
-| `unlinked` | no `__` and no exact match; a plain human name |
-
-With `--remote`, `demos` and `projects` also read `demos_remote` (a read-only
-`rclone lsf`; it fails with rclone's error if the remote can't be listed). Each
-Demo is tagged by **Location**: `local`, `remote` (e.g. kept on the remote
-after you removed it locally, since `backup` never deletes), or `both`. Locations
-are decided by name only - `both` does not mean the two files are identical.
-
-A `.wav` and `.mp3` with the same name count as one Demo, and `convert-demos`
-keeps the name, so links survive conversion. Nothing is stored - links are
-re-derived from names each run - so renaming a `.als` dangles its Demos. See
-`docs/adr/0003-demos-link-to-versions-by-filename.md` for the reasoning.
 
 ### Shell completion
 
@@ -186,11 +181,11 @@ Completion is generated by the CLI itself (zsh, bash, fish, powershell):
 
 ```sh
 # zsh: add to ~/.zshrc, after compinit
-source <(abletonctl completion zsh)
+source <(studioctl completion zsh)
 ```
 
-It completes command names, `--target` values, `--config` files (`*.toml`)
-and project directories for `find-orphans`. Run `abletonctl completion --help`
+It completes command names, Directory names for `backup`, `--config` files (`*.toml`)
+and project directories for `find-orphans`. Run `studioctl completion --help`
 for the other shells.
 
 ## Development

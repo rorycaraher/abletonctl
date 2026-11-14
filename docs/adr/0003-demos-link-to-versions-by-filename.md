@@ -1,3 +1,13 @@
+---
+status: parked
+---
+
+> **Parked.** Demo→Version linking was removed when the tool became
+> `studioctl` (see [0004](0004-named-directories-with-remotes.md)), until the
+> tool's direction is clearer. The code was last present at `ae7690e` (also on
+> the `dev-relate-demos` branch). The reasoning below still holds for when it
+> comes back.
+
 # Demos link to Versions by filename convention
 
 A Demo is related to the Version (top-level `.als`) it was rendered from by

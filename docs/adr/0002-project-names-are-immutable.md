@@ -8,7 +8,7 @@ never changes after creation.
 We considered supporting in-place rename with reference fixups (update the
 Track row, re-derive Demo matches, etc.) but rejected it: naming a Project
 is an artistic choice an artist should be free to reconsider mid-project,
-not an engineering operation abletonctl should try to keep consistent
+not an engineering operation studioctl should try to keep consistent
 under the hood. Instead, changing what a Project is called is done via
 **Retitle**: Ableton's own Save As into a new Project folder, followed by
 `collect` to pull the old Project's external references into the new one.

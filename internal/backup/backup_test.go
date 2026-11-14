@@ -4,69 +4,54 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/rorycaraher/abletonctl/internal/config"
+	"github.com/rorycaraher/studioctl/internal/config"
 )
 
 func fullConfig() *config.Config {
-	return &config.Config{
-		ProjectsDir:    "/local/projects",
-		DemosDir:       "/local/demos",
-		ProjectsRemote: "r2:my-bucket/projects",
-		DemosRemote:    "gdrive:my-demos",
-		AbletonDir:     "/local/user-library",
-		AbletonRemote:  "r2:my-bucket/user-library",
-	}
+	return &config.Config{Dirs: map[string]config.Directory{
+		"projects":     {Path: "/local/projects", Remotes: []string{"r2:bucket/projects", "nas:music/projects"}},
+		"demos":        {Path: "/local/demos", Remotes: []string{"gdrive:demos"}},
+		"user-library": {Path: "/local/user-library", Remotes: []string{"r2:bucket/user-library"}},
+		"scratch":      {Path: "/local/scratch"},
+	}}
 }
 
-func TestBuildJobs_BothTargetsByDefault(t *testing.T) {
-	jobs, err := BuildJobs(fullConfig(), "")
+func TestBuildJobs_EveryRemoteOfEveryDirectory(t *testing.T) {
+	jobs, err := BuildJobs(fullConfig(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(jobs) != 3 {
-		t.Fatalf("got %d jobs, want 3: %+v", len(jobs), jobs)
-	}
+	// Built in code, so Directories come in name order; scratch has no Remotes.
 	want := []Job{
-		{Target: Projects, LocalDir: "/local/projects", RemoteDir: "r2:my-bucket/projects"},
-		{Target: Demos, LocalDir: "/local/demos", RemoteDir: "gdrive:my-demos"},
-		{Target: Ableton, LocalDir: "/local/user-library", RemoteDir: "r2:my-bucket/user-library"},
+		{Dir: "demos", LocalDir: "/local/demos", RemoteDir: "gdrive:demos"},
+		{Dir: "projects", LocalDir: "/local/projects", RemoteDir: "r2:bucket/projects"},
+		{Dir: "projects", LocalDir: "/local/projects", RemoteDir: "nas:music/projects"},
+		{Dir: "user-library", LocalDir: "/local/user-library", RemoteDir: "r2:bucket/user-library"},
 	}
 	if !reflect.DeepEqual(jobs, want) {
-		t.Fatalf("got %+v, want %+v", jobs, want)
+		t.Fatalf("got  %+v\nwant %+v", jobs, want)
 	}
 }
 
-func TestBuildJobs_FiltersByTarget(t *testing.T) {
-	jobs, err := BuildJobs(fullConfig(), "demos")
+func TestBuildJobs_NamedDirectoriesInGivenOrder(t *testing.T) {
+	jobs, err := BuildJobs(fullConfig(), []string{"user-library", "demos"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(jobs) != 1 || jobs[0].Target != Demos {
+	if len(jobs) != 2 || jobs[0].Dir != "user-library" || jobs[1].Dir != "demos" {
 		t.Fatalf("got %+v", jobs)
 	}
 }
 
-func TestBuildJobs_UnknownTargetErrors(t *testing.T) {
-	if _, err := BuildJobs(fullConfig(), "nope"); err == nil {
-		t.Fatal("expected error for unknown target")
+func TestBuildJobs_UnknownDirectoryErrors(t *testing.T) {
+	if _, err := BuildJobs(fullConfig(), []string{"nope"}); err == nil {
+		t.Fatal("expected error for unknown Directory")
 	}
 }
 
-func TestBuildJobs_SkipsUnconfiguredTargetWhenUnfiltered(t *testing.T) {
-	cfg := &config.Config{ProjectsDir: "/local/projects", ProjectsRemote: "r2:my-bucket/projects"}
-	jobs, err := BuildJobs(cfg, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(jobs) != 1 || jobs[0].Target != Projects {
-		t.Fatalf("got %+v", jobs)
-	}
-}
-
-func TestBuildJobs_UnconfiguredTargetExplicitlyRequestedErrors(t *testing.T) {
-	cfg := &config.Config{ProjectsDir: "/local/projects", ProjectsRemote: "r2:my-bucket/projects"}
-	if _, err := BuildJobs(cfg, "demos"); err == nil {
-		t.Fatal("expected error requesting an unconfigured target")
+func TestBuildJobs_NamedDirectoryWithoutRemotesErrors(t *testing.T) {
+	if _, err := BuildJobs(fullConfig(), []string{"scratch"}); err == nil {
+		t.Fatal("expected error naming a Directory without Remotes")
 	}
 }
 
